@@ -20,7 +20,7 @@ interface OrderTrackingPageProps {
 }
 
 export const OrderTrackingPage: React.FC<OrderTrackingPageProps> = ({ orderId = '', phone = '' }) => {
-  const { trackOrder, settings, orders } = useStore();
+  const { trackOrderAsync, settings, orders } = useStore();
 
   const [inputOrderId, setInputOrderId] = useState(orderId);
   const [inputPhone, setInputPhone] = useState(phone);
@@ -31,11 +31,12 @@ export const OrderTrackingPage: React.FC<OrderTrackingPageProps> = ({ orderId = 
   // Auto-search if props provided
   useEffect(() => {
     if (orderId && phone) {
-      const found = trackOrder(orderId, phone);
-      if (found) {
-        setMatchedOrder(found);
-        setSearched(true);
-      }
+      trackOrderAsync(orderId, phone).then((found) => {
+        if (found) {
+          setMatchedOrder(found);
+          setSearched(true);
+        }
+      });
     } else if (orderId) {
       const found = orders.find((o) => o.id.toUpperCase() === orderId.toUpperCase());
       if (found) {
@@ -43,9 +44,9 @@ export const OrderTrackingPage: React.FC<OrderTrackingPageProps> = ({ orderId = 
         setSearched(true);
       }
     }
-  }, [orderId, phone, orders, trackOrder]);
+  }, [orderId, phone, orders, trackOrderAsync]);
 
-  const handleSearch = (e: React.FormEvent) => {
+  const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(null);
     setSearched(true);
@@ -58,13 +59,8 @@ export const OrderTrackingPage: React.FC<OrderTrackingPageProps> = ({ orderId = 
     const cleanId = inputOrderId.trim().toUpperCase();
     const cleanPhone = inputPhone.trim().replace(/[-+\s]/g, '');
 
-    // Search by ID and optional phone
-    let found = orders.find((o) => o.id.toUpperCase() === cleanId);
-    if (found && cleanPhone) {
-      if (!found.customer_phone.replace(/[-+\s]/g, '').endsWith(cleanPhone.slice(-6))) {
-        found = undefined;
-      }
-    }
+    // Search by ID and optional phone — hits the Laravel API in API mode.
+    const found = await trackOrderAsync(cleanId, cleanPhone);
 
     if (found) {
       setMatchedOrder(found);

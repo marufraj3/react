@@ -8,7 +8,7 @@ export const AdminCoupons: React.FC = () => {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [code, setCode] = useState('');
-  const [type, setType] = useState<'fixed' | 'percentage'>('fixed');
+  const [type, setType] = useState<'fixed' | 'percent'>('fixed');
   const [amount, setAmount] = useState<number>(100);
   const [minPurchase, setMinPurchase] = useState<number>(1000);
   const [maxDiscount, setMaxDiscount] = useState<number>(500);
@@ -30,10 +30,10 @@ export const AdminCoupons: React.FC = () => {
 
     addCoupon({
       code: code.trim().toUpperCase(),
-      type,
-      amount,
+      discount_type: type,
+      discount_amount: amount,
       min_purchase: minPurchase,
-      max_discount: type === 'percentage' ? maxDiscount : undefined,
+      max_discount: type === 'percent' ? maxDiscount : undefined,
       expiry_date: expiryDate,
       status: 1,
     });
@@ -76,10 +76,10 @@ export const AdminCoupons: React.FC = () => {
                   {c.code}
                 </span>
                 <div className="text-xs font-bold text-gray-900 pt-1">
-                  ছাড়:{' '}
-                  {c.type === 'fixed'
-                    ? `${settings.currency}${c.amount} ফ্ল্যাট ডিসকাউন্ট`
-                    : `${c.amount}% পার্সেন্টেজ ডিসকাউন্ট`}
+                  ছাড়:{' '}
+                  {c.discount_type === 'fixed'
+                    ? `${settings.currency}${c.discount_amount} ফ্ল্যাট ডিসকাউন্ট`
+                    : `${c.discount_amount}% পার্সেন্টেজ ডিসকাউন্ট`}
                 </div>
               </div>
 
@@ -148,7 +148,7 @@ export const AdminCoupons: React.FC = () => {
                     className="w-full bg-gray-50 rounded-xl px-3 py-2.5 border border-gray-200 font-bold outline-hidden"
                   >
                     <option value="fixed">ফিক্সড টাকা (Fixed ৳)</option>
-                    <option value="percentage">শতাংশ (Percentage %)</option>
+                    <option value="percent">শতাংশ (Percentage %)</option>
                   </select>
                 </div>
 

@@ -52,7 +52,7 @@ export const AdminComplaints: React.FC = () => {
               <div className="space-y-1.5 flex-1">
                 <div className="flex items-center gap-2">
                   <span className="font-mono text-xs font-bold bg-gray-100 text-gray-800 px-2 py-0.5 rounded">
-                    টোকেন: {c.token}
+                    টোকেন: {c.id}
                   </span>
                   {c.order_id && (
                     <span className="font-mono text-xs font-bold text-red-600">

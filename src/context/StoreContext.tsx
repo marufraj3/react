@@ -35,6 +35,15 @@ import {
   initialComplaints,
   initialContactMessages,
 } from '../data/initialData';
+import {
+  API_ENABLED,
+  fetchBootstrap,
+  placeOrder,
+  trackOrderApi,
+  submitReviewApi,
+  submitComplaintApi,
+  submitContactApi,
+} from '../api/client';
 
 export type ViewType =
   | 'home'
@@ -114,9 +123,12 @@ interface StoreContextType {
   lastCreatedOrder: Order | null;
   createOrder: (orderData: Omit<Order, 'id' | 'created_at' | 'status'>) => Promise<{ success: boolean; orderId?: string; message: string }>;
   trackOrder: (orderId: string, phone: string) => Order | null;
+  /** Server-backed variant — hits the Laravel API when VITE_API_URL is set. */
+  trackOrderAsync: (orderId: string, phone: string) => Promise<Order | null>;
 
   // Admin CRUD Operations
   updateOrderStatus: (orderId: string, status: OrderStatus, courierName?: string, trackingId?: string) => void;
+  updateOrderCourier: (orderId: string, courierName: string, trackingId: string) => void;
   deleteOrder: (orderId: string) => void;
   addProduct: (product: Omit<Product, 'id' | 'created_at' | 'ratting' | 'reviews_count'>) => void;
   updateProduct: (id: number, product: Partial<Product>) => void;
@@ -128,8 +140,10 @@ interface StoreContextType {
   addBanner: (banner: Omit<Banner, 'id'>) => void;
   deleteBanner: (id: number) => void;
   addCoupon: (coupon: Omit<Coupon, 'id' | 'used_count'>) => void;
+  updateCoupon: (coupon: Partial<Coupon> & { id: number }) => void;
   deleteCoupon: (id: number) => void;
   approveReview: (id: number) => void;
+  updateReviewStatus: (id: number, status: 'approved' | 'pending') => void;
   deleteReview: (id: number) => void;
   addReview: (review: Omit<Review, 'id' | 'created_at' | 'status'>) => void;
   submitComplaint: (complaint: Omit<CustomerComplaint, 'id' | 'created_at' | 'status'>) => string;
@@ -173,7 +187,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [brands, setBrands] = useState<Brand[]>(() => getStoredItem('brands', initialBrands));
   const [banners, setBanners] = useState<Banner[]>(() => getStoredItem('banners', initialBanners));
   const [coupons, setCoupons] = useState<Coupon[]>(() => getStoredItem('coupons', initialCoupons));
-  const [shippingCharges] = useState<ShippingCharge[]>(initialShippingCharges);
+  const [shippingCharges, setShippingCharges] = useState<ShippingCharge[]>(initialShippingCharges);
   const [orders, setOrders] = useState<Order[]>(() => getStoredItem('orders', initialOrders));
   const [incompleteOrders, setIncompleteOrders] = useState<IncompleteOrder[]>(() => getStoredItem('incomplete_orders', []));
   const [settings, setSettings] = useState<GeneralSettings>(() => getStoredItem('settings', initialSettings));
@@ -196,6 +210,43 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   useEffect(() => setStoredItem('reviews', reviews), [reviews]);
   useEffect(() => setStoredItem('complaints', complaints), [complaints]);
   useEffect(() => setStoredItem('contact_messages', contactMessages), [contactMessages]);
+
+  // Hydrate the store from the Laravel REST API when configured (VITE_API_URL).
+  // Falls back to the localStorage demo data when the API is unreachable.
+  const [apiHydrated, setApiHydrated] = useState(false);
+  useEffect(() => {
+    if (!API_ENABLED || apiHydrated) return;
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const data = await fetchBootstrap();
+        if (cancelled) return;
+
+        if (data.settings && Object.keys(data.settings).length > 0) {
+          setSettings((prev) => ({ ...prev, ...data.settings }));
+        }
+        if (data.categories?.length) setCategories(data.categories);
+        if (data.subcategories?.length) setSubcategories(data.subcategories);
+        if (data.banners?.length) setBanners(data.banners);
+        if (data.shipping_charges?.length) {
+          setShippingCharges(data.shipping_charges);
+        }
+        if (data.coupons?.length) setCoupons(data.coupons);
+        if (data.products?.length) setProducts(data.products);
+        if (data.blogs?.length) setBlogs(data.blogs);
+
+        setApiHydrated(true);
+      } catch {
+        // API unreachable — keep running on the demo data.
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [API_ENABLED, apiHydrated]);
 
   // Views & Navigation
   const [currentView, setCurrentView] = useState<ViewType>('home');
@@ -358,6 +409,62 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   // Create Order with Fraud / Duplicate Detection
   const createOrder = async (orderData: Omit<Order, 'id' | 'created_at' | 'status'>) => {
+    // API mode: forward the order to the Laravel backend.
+    if (API_ENABLED) {
+      try {
+        const areaMap: Record<Order['delivery_area'], number> = {
+          inside_dhaka: 1,
+          sub_dhaka: 2,
+          outside_dhaka: 3,
+        };
+
+        const result = await placeOrder({
+          name: orderData.customer_name,
+          phone: orderData.customer_phone,
+          address: orderData.customer_address,
+          area: areaMap[orderData.delivery_area] ?? 3,
+          payment_method: orderData.payment_method,
+          order_note: orderData.order_note,
+          coupon_code: appliedCoupon?.code,
+          items: orderData.items.map((i) => ({
+            product_id: i.product_id,
+            qty: i.quantity,
+            price: i.price,
+            color: i.color,
+            size: i.size,
+          })),
+        });
+
+        const synthOrder: Order = {
+          ...orderData,
+          id: result.order_id,
+          status: 'pending',
+          created_at: new Date().toISOString().replace('T', ' ').substring(0, 19),
+        };
+
+        setOrders((prev) => [synthOrder, ...prev]);
+        setLastCreatedOrder(synthOrder);
+        clearCart();
+        setQuickOrderProduct(null);
+
+        try {
+          confetti({ particleCount: 80, spread: 70, origin: { y: 0.6 } });
+        } catch {
+          // ignore
+        }
+
+        showToast(`🎉 আপনার অর্ডারটি সফলভাবে গৃহীত হয়েছে! অর্ডার আইডি: ${result.order_id}`, 'success');
+        navigate('order_success', { orderId: result.order_id });
+
+        return { success: true, orderId: result.order_id, message: 'অর্ডার সফলভাবে সম্পন্ন হয়েছে!' };
+      } catch (err) {
+        return {
+          success: false,
+          message: err instanceof Error ? err.message : 'অর্ডার প্রক্রিয়া করার সময় ত্রুটি হয়েছে।',
+        };
+      }
+    }
+
     const cleanPhone = orderData.customer_phone.trim().replace(/[-+\s]/g, '');
 
     // Check blocked phones
@@ -448,6 +555,19 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return found || null;
   };
 
+  const trackOrderAsync = async (orderId: string, phone: string): Promise<Order | null> => {
+    if (!API_ENABLED) {
+      return trackOrder(orderId, phone);
+    }
+
+    const found = await trackOrderApi(orderId, phone);
+    if (found) {
+      // Merge server order into the local list so the rest of the UI can read it.
+      setOrders((prev) => (prev.some((o) => o.id === found.id) ? prev : [found, ...prev]));
+    }
+    return found;
+  };
+
   // Admin Actions
   const updateOrderStatus = (orderId: string, status: OrderStatus, courierName?: string, trackingId?: string) => {
     setOrders((prev) =>
@@ -464,6 +584,17 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       })
     );
     showToast(`অর্ডার ${orderId} এর স্ট্যাটাস '${status}' আপডেট করা হয়েছে`, 'success');
+  };
+
+  const updateOrderCourier = (orderId: string, courierName: string, trackingId: string) => {
+    setOrders((prev) =>
+      prev.map((o) =>
+        o.id === orderId
+          ? { ...o, courier_name: courierName, courier_tracking_id: trackingId, status: 'courier' }
+          : o
+      )
+    );
+    showToast(`অর্ডার ${orderId} কুরিয়ারে পাঠানো হয়েছে!`, 'success');
   };
 
   const deleteOrder = (orderId: string) => {
@@ -532,6 +663,11 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     showToast('কুপন কোড তৈরি হয়েছে', 'success');
   };
 
+  const updateCoupon = (coupon: Partial<Coupon> & { id: number }) => {
+    setCoupons((prev) => prev.map((c) => (c.id === coupon.id ? { ...c, ...coupon } : c)));
+    showToast('কুপন আপডেট সম্পন্ন হয়েছে', 'success');
+  };
+
   const deleteCoupon = (id: number) => {
     setCoupons((prev) => prev.filter((c) => c.id !== id));
     showToast('কুপন মুছে ফেলা হয়েছে', 'info');
@@ -542,12 +678,29 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     showToast('রিভিউ অনুমোদন দেওয়া হয়েছে', 'success');
   };
 
+  const updateReviewStatus = (id: number, status: 'approved' | 'pending') => {
+    setReviews((prev) => prev.map((r) => (r.id === id ? { ...r, status } : r)));
+    showToast('রিভিউ স্ট্যাটাস আপডেট হয়েছে', 'success');
+  };
+
   const deleteReview = (id: number) => {
     setReviews((prev) => prev.filter((r) => r.id !== id));
     showToast('রিভিউ ডিলিট করা হয়েছে', 'info');
   };
 
   const addReview = (review: Omit<Review, 'id' | 'created_at' | 'status'>) => {
+    if (API_ENABLED) {
+      submitReviewApi({
+        product_id: review.product_id,
+        rating: review.rating,
+        comment: review.comment,
+        customer_name: review.customer_name,
+        customer_email: review.customer_phone,
+      }).catch(() => {
+        // Keep the local review even if the API call fails.
+      });
+    }
+
     const newRev: Review = {
       ...review,
       id: Date.now(),
@@ -559,6 +712,17 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   const submitComplaint = (complaint: Omit<CustomerComplaint, 'id' | 'created_at' | 'status'>) => {
+    if (API_ENABLED) {
+      submitComplaintApi({
+        name: complaint.customer_name,
+        phone: complaint.customer_phone,
+        order_id: complaint.order_id,
+        message: complaint.subject ? `${complaint.subject} — ${complaint.message}` : complaint.message,
+      }).catch(() => {
+        // Ignore — the local record still stands.
+      });
+    }
+
     const id = 'CMP-' + Math.floor(1000 + Math.random() * 9000);
     const newComp: CustomerComplaint = {
       ...complaint,
@@ -572,6 +736,18 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   const submitContactMessage = (msg: Omit<ContactMessage, 'id' | 'created_at' | 'is_read'>) => {
+    if (API_ENABLED) {
+      submitContactApi({
+        name: msg.name,
+        phone: msg.phone,
+        email: msg.email,
+        subject: msg.subject,
+        message: msg.message,
+      }).catch(() => {
+        // Ignore — the local record still stands.
+      });
+    }
+
     const newMsg: ContactMessage = {
       ...msg,
       id: Date.now(),
@@ -644,7 +820,9 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         lastCreatedOrder,
         createOrder,
         trackOrder,
+        trackOrderAsync,
         updateOrderStatus,
+        updateOrderCourier,
         deleteOrder,
         addProduct,
         updateProduct,
@@ -656,8 +834,10 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         addBanner,
         deleteBanner,
         addCoupon,
+        updateCoupon,
         deleteCoupon,
         approveReview,
+        updateReviewStatus,
         deleteReview,
         addReview,
         submitComplaint,

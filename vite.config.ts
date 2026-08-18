@@ -17,6 +17,14 @@ export default defineConfig(() => {
       hmr: process.env.DISABLE_HMR !== 'true',
       // Disable file watching when DISABLE_HMR is true to save CPU during agent edits.
       watch: process.env.DISABLE_HMR === 'true' ? null : {},
+      // Proxy API + uploaded media to the Laravel backend during local dev.
+      proxy: process.env.VITE_BACKEND_PROXY
+        ? {
+            '/api': { target: process.env.VITE_BACKEND_PROXY, changeOrigin: true },
+            '/uploads': { target: process.env.VITE_BACKEND_PROXY, changeOrigin: true },
+            '/storage': { target: process.env.VITE_BACKEND_PROXY, changeOrigin: true },
+          }
+        : undefined,
     },
   };
 });

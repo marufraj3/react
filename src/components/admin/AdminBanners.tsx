@@ -11,14 +11,14 @@ export const AdminBanners: React.FC = () => {
   const [subtitle, setSubtitle] = useState('');
   const [image, setImage] = useState('');
   const [link, setLink] = useState('#');
-  const [category, setCategory] = useState<'slider' | 'middle' | 'hot_deal'>('slider');
+  const [position, setPosition] = useState<'hero' | 'middle_ad' | 'hotdeals'>('hero');
 
   const handleOpenAdd = () => {
     setTitle('');
     setSubtitle('');
     setImage('https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=1200&auto=format&fit=crop&q=80');
     setLink('#');
-    setCategory('slider');
+    setPosition('hero');
     setIsModalOpen(true);
   };
 
@@ -31,7 +31,8 @@ export const AdminBanners: React.FC = () => {
       subtitle: subtitle.trim() || undefined,
       image: image.trim(),
       link: link.trim() || '#',
-      category,
+      category_id: 1,
+      position,
       status: 1,
     });
 
@@ -70,7 +71,7 @@ export const AdminBanners: React.FC = () => {
             <div className="aspect-[16/8] relative bg-gray-100">
               <img src={b.image} alt={b.title} className="w-full h-full object-cover" />
               <span className="absolute top-2 left-2 bg-black/70 backdrop-blur-xs text-white text-[10px] font-bold px-2 py-0.5 rounded-md uppercase">
-                {b.category}
+                {b.position}
               </span>
             </div>
 
@@ -148,13 +149,13 @@ export const AdminBanners: React.FC = () => {
               <div>
                 <label className="block font-bold text-gray-700 mb-1">ব্যানারের ধরণ / পজিশন</label>
                 <select
-                  value={category}
-                  onChange={(e) => setCategory(e.target.value as any)}
+                  value={position}
+                  onChange={(e) => setPosition(e.target.value as any)}
                   className="w-full bg-gray-50 rounded-xl px-3.5 py-2.5 border border-gray-200 font-bold outline-hidden focus:border-red-500"
                 >
-                  <option value="slider">মেইন হিরো স্লাইডার (Hero Slider)</option>
-                  <option value="middle">মাঝের অফার ব্যানার (Middle Promo)</option>
-                  <option value="hot_deal">হট ডিল ব্যানার</option>
+                  <option value="hero">মেইন হিরো স্লাইডার (Hero Slider)</option>
+                  <option value="middle_ad">মাঝের অফার ব্যানার (Middle Promo)</option>
+                  <option value="hotdeals">হট ডিল ব্যানার</option>
                 </select>
               </div>
 

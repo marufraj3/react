@@ -1,0 +1,30 @@
+/node_modules
+/public/build
+/public/hot
+/public/storage
+/storage/*.key
+/vendor
+.env
+.env.backup
+.env.production
+.phpunit.result.cache
+Homestead.json
+Homestead.yaml
+auth.json
+npm-debug.log
+yarn-error.log
+/.fleet
+/.idea
+/.vscode
+
+# Static design preview build output
+preview/www/
+
+# Generated landing-page design preview (rendered from resources/templates/ai-studio-landing.html)
+/ai-studio-design-preview.html
+
+# Uploaded runtime files (not tracked in git)
+/public/uploads
+/storage/framework/cache/*
+/storage/framework/views/*
+/storage/logs/*

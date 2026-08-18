@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>প্রিমিয়াম প্রোডাক্ট ল্যান্ডিং পেজ</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <!-- Google Fonts (Hind Siliguri) -->
+    <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        html { scroll-behavior: smooth; scroll-padding-top: 76px; }
+        body { font-family: 'Hind Siliguri', sans-serif; }
+        .pulse-btn {
+            animation: pulse-animation 1.8s infinite;
+        }
+        @keyframes pulse-animation {
+            0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.7); }
+            70% { transform: scale(1.03); box-shadow: 0 0 0 12px rgba(220, 38, 38, 0); }
+            100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(220, 38, 38, 0); }
+        }
+        /* Live commerce components keep the same 3-column grid as the design. */
+        .cpb-live-products { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; }
+        .cpb-live-reviews { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+        .cpb-live-checkout { max-width: 900px; margin: 0 auto; }
+        @media (max-width: 900px) {
+            .cpb-live-products, .cpb-live-reviews { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        }
+        @media (max-width: 640px) {
+            .cpb-live-products, .cpb-live-reviews { grid-template-columns: 1fr; }
+            /* Keep the storefront's round order button clear of the mobile bar. */
+            .cpb-sticky-order { bottom: 84px !important; }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800">
+
+    <!-- 0. Announcement & Countdown Header -->
+    <div class="bg-red-600 text-white py-2 px-4 text-center text-sm md:text-base sticky top-0 z-50 shadow-md">
+        <div class="container mx-auto flex flex-col md:flex-row justify-between items-center gap-2">
+            <span class="font-bold animate-pulse">🔥 মেগা অফার! ৫০% ছাড় কেবল আজকের জন্য!</span>
+            <!-- Countdown Timer -->
+            <div class="flex items-center gap-2 font-mono bg-red-800 px-3 py-1 rounded text-yellow-300 font-bold">
+                <span>অফার শেষ হতে বাকি:</span>
+                <span id="timer">05:45:20</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- 1. HERO SECTION -->
+    <section class="py-8 md:py-12 bg-white">
+        <div class="container mx-auto px-4 grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+            <!-- Left Text Content -->
+            <div>
+                <span class="bg-red-100 text-red-600 text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider">PREMIUM COLLECTION</span>
+                <h1 class="text-3xl md:text-5xl font-extrabold text-gray-900 mt-3 leading-tight">
+                    {{ product_name }}
+                </h1>
+                <p class="mt-4 text-gray-600 text-lg">
+                    {{ description }}
+                </p>
+
+                <!-- Price Section -->
+                <div class="mt-6 flex items-center gap-4">
+                    <span class="text-3xl md:text-4xl font-extrabold text-red-600">৳ {{ product_price }}</span>
+                    <span class="text-xl text-gray-400 line-through">৳ {{ old_price }}</span>
+                    <span class="bg-green-100 text-green-700 text-sm font-bold px-2 py-1 rounded">ডিসকাউন্ট</span>
+                </div>
+
+                <!-- Action Button -->
+                <div class="mt-6">
+                    <a href="#product-grid" class="pulse-btn inline-block w-full sm:w-auto text-center bg-red-600 hover:bg-red-700 text-white font-bold text-xl px-8 py-4 rounded-lg shadow-lg transition">
+                        <i class="fa-solid fa-cart-shopping mr-2"></i> প্রোডাক্ট পছন্দ করুন
+                    </a>
+                </div>
+
+                <!-- Instant Trust Points -->
+                <div class="mt-6 flex flex-wrap items-center gap-4 text-sm text-gray-600">
+                    <div class="flex items-center gap-1"><i class="fa-solid fa-truck-fast text-green-600"></i> হোম ডেলিভারি</div>
+                    <div class="flex items-center gap-1"><i class="fa-solid fa-hand-holding-dollar text-green-600"></i> ক্যাশ অন ডেলিভারি</div>
+                    <div class="flex items-center gap-1"><i class="fa-solid fa-arrows-rotate text-green-600"></i> সহজ রিটার্ন পলিসি</div>
+                </div>
+            </div>
+
+            <!-- Right Image Showcase -->
+            <div class="relative">
+                <img src="{{ featured_image }}" alt="Product Image" class="w-full rounded-2xl shadow-xl border-4 border-gray-100">
+                <div class="absolute top-4 right-4 bg-yellow-400 text-gray-900 font-bold px-4 py-2 rounded-full shadow">
+                    ⭐ ৪.৯ (৫০০+ রিভিউ)
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 2. TRUST SECTION -->
+    <section class="py-8 bg-gray-100 border-y border-gray-200">
+        <div class="container mx-auto px-4">
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+                <div class="bg-white p-4 rounded-lg shadow-sm">
+                    <i class="fa-solid fa-users text-3xl text-red-600 mb-2"></i>
+                    <h4 class="font-bold text-xl">১০,০০০+</h4>
+                    <p class="text-xs text-gray-500">সন্তুষ্ট গ্রাহক</p>
+                </div>
+                <div class="bg-white p-4 rounded-lg shadow-sm">
+                    <i class="fa-solid fa-shield-halved text-3xl text-red-600 mb-2"></i>
+                    <h4 class="font-bold text-xl">১০০% অরিজিনাল</h4>
+                    <p class="text-xs text-gray-500">প্রিমিয়াম প্রোডাক্ট</p>
+                </div>
+                <div class="bg-white p-4 rounded-lg shadow-sm">
+                    <i class="fa-solid fa-box-open text-3xl text-red-600 mb-2"></i>
+                    <h4 class="font-bold text-xl">দেখে নেওয়ার সুযোগ</h4>
+                    <p class="text-xs text-gray-500">ডেলিভারির সময়</p>
+                </div>
+                <div class="bg-white p-4 rounded-lg shadow-sm">
+                    <i class="fa-solid fa-headset text-3xl text-red-600 mb-2"></i>
+                    <h4 class="font-bold text-xl">২৪/৭ সাপোর্ট</h4>
+                    <p class="text-xs text-gray-500">কাস্টমার কেয়ার</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 3. BENEFITS SECTION -->
+    <section class="py-12 bg-white">
+        <div class="container mx-auto px-4 max-w-4xl">
+            <h2 class="text-2xl md:text-3xl font-bold text-center text-gray-900 mb-8">
+                কেন আমাদের এই টি-শার্টটি সেরা?
+            </h2>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="flex items-start gap-4 p-4 border rounded-xl hover:shadow-md transition">
+                    <div class="bg-red-100 p-3 rounded-full text-red-600"><i class="fa-solid fa-check text-xl"></i></div>
+                    <div>
+                        <h3 class="font-bold text-lg">১০০% কম্বড কটন ফেব্রিক</h3>
+                        <p class="text-gray-600 text-sm mt-1">অত্যন্ত নরম এবং আরামদায়ক, যা গরমেও শরীরে প্রশান্তি দেয়।</p>
+                    </div>
+                </div>
+
+                <div class="flex items-start gap-4 p-4 border rounded-xl hover:shadow-md transition">
+                    <div class="bg-red-100 p-3 rounded-full text-red-600"><i class="fa-solid fa-check text-xl"></i></div>
+                    <div>
+                        <h3 class="font-bold text-lg">কালার গ্যারান্টি</h3>
+                        <p class="text-gray-600 text-sm mt-1">যতবারই ধুবেন, রং থাকবে একদম নতুন ও উজ্জ্বল।</p>
+                    </div>
+                </div>
+
+                <div class="flex items-start gap-4 p-4 border rounded-xl hover:shadow-md transition">
+                    <div class="bg-red-100 p-3 rounded-full text-red-600"><i class="fa-solid fa-check text-xl"></i></div>
+                    <div>
+                        <h3 class="font-bold text-lg">আধুনিক ফিটিং</h3>
+                        <p class="text-gray-600 text-sm mt-1">স্মার্ট ও আধুনিক কাটিং, যা আপনার লুককে প্রিমিয়াম করে তোলে।</p>
+                    </div>
+                </div>
+
+                <div class="flex items-start gap-4 p-4 border rounded-xl hover:shadow-md transition">
+                    <div class="bg-red-100 p-3 rounded-full text-red-600"><i class="fa-solid fa-check text-xl"></i></div>
+                    <div>
+                        <h3 class="font-bold text-lg">পাকা সেলাই</h3>
+                        <p class="text-gray-600 text-sm mt-1">উন্নতমানের সুতা দিয়ে পাকা সেলাই করা, সহজে ছিঁড়বে না।</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 4. PHOTOS / GALLERY SECTION -->
+    <section class="py-12 bg-gray-50">
+        <div class="container mx-auto px-4">
+            <h2 class="text-2xl md:text-3xl font-bold text-center text-gray-900 mb-8">
+                আমাদের প্রোডাক্টের কিছু আসল ছবি
+            </h2>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <img src="https://images.unsplash.com/photo-1521572267360-ee0c2909d518?auto=format&fit=crop&w=500&q=80" alt="Gallery 1" class="rounded-lg shadow hover:opacity-90 transition">
+                <img src="https://images.unsplash.com/photo-1583743814966-8936f5b7be1a?auto=format&fit=crop&w=500&q=80" alt="Gallery 2" class="rounded-lg shadow hover:opacity-90 transition">
+                <img src="https://images.unsplash.com/photo-1618354691373-d851c5c3a990?auto=format&fit=crop&w=500&q=80" alt="Gallery 3" class="rounded-lg shadow hover:opacity-90 transition">
+                <img src="https://images.unsplash.com/photo-1503342217505-b0a15ec3261c?auto=format&fit=crop&w=500&q=80" alt="Gallery 4" class="rounded-lg shadow hover:opacity-90 transition">
+            </div>
+        </div>
+    </section>
+
+    <!-- 5. SIZE CHART SECTION -->
+    <section class="py-12 bg-white">
+        <div class="container mx-auto px-4 max-w-2xl">
+            <h2 class="text-2xl md:text-3xl font-bold text-center text-gray-900 mb-2">
+                সাইজ চার্ট (Size Chart)
+            </h2>
+            <p class="text-center text-gray-500 mb-6 text-sm">প্রোডাক্ট সিলেক্ট করার আগে আপনার সঠিক সাইজটি জেনে নিন</p>
+
+            <div class="overflow-x-auto shadow border rounded-lg">
+                <table class="w-full text-center border-collapse">
+                    <thead>
+                        <tr class="bg-red-600 text-white font-bold">
+                            <th class="p-3">Size</th>
+                            <th class="p-3">Chest (ইঞ্চি)</th>
+                            <th class="p-3">Length (ইঞ্চি)</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-200">
+                        <tr class="hover:bg-gray-50">
+                            <td class="p-3 font-bold">M</td>
+                            <td class="p-3">38"</td>
+                            <td class="p-3">27"</td>
+                        </tr>
+                        <tr class="hover:bg-gray-50">
+                            <td class="p-3 font-bold">L</td>
+                            <td class="p-3">40"</td>
+                            <td class="p-3">28"</td>
+                        </tr>
+                        <tr class="hover:bg-gray-50">
+                            <td class="p-3 font-bold">XL</td>
+                            <td class="p-3">42"</td>
+                            <td class="p-3">29"</td>
+                        </tr>
+                        <tr class="hover:bg-gray-50">
+                            <td class="p-3 font-bold">XXL</td>
+                            <td class="p-3">44"</td>
+                            <td class="p-3">30"</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <!-- 6. PRODUCT GRID SECTION (live products from the admin panel) -->
+    <section id="product-grid" class="py-12 bg-gray-100 border-t">
+        <div class="container mx-auto px-4 max-w-5xl">
+            <h2 class="text-2xl md:text-3xl font-extrabold text-center text-gray-900 mb-2">
+                পছন্দের প্রোডাক্ট ও সাইজ সিলেক্ট করুন
+            </h2>
+            <p class="text-center text-gray-600 mb-8 text-sm">আপনার পছন্দের প্রোডাক্টটি সিলেক্ট করুন, তারপর সাইজ ও কালার বেছে অর্ডার করুন</p>
+
+            {{ products }}
+        </div>
+    </section>
+
+    <!-- 7. ORDER FORM & DYNAMIC CART SUMMARY (live Laravel checkout) -->
+    <section id="order_form" class="py-12 bg-red-50 border-t-2 border-red-200">
+        <div class="container mx-auto px-4">
+            <h2 class="text-2xl md:text-3xl font-extrabold text-center text-gray-900 mb-1">
+                আপনার অর্ডার সামারি
+            </h2>
+            <p class="text-center text-red-600 text-sm font-semibold mb-6">কোনো অগ্রিম টাকা দিতে হবে না, পণ্য হাতে পেয়ে টাকা দিন!</p>
+
+            {{ checkout }}
+        </div>
+    </section>
+
+    <!-- Floating Bottom Bar for Mobile -->
+    <div class="md:hidden fixed bottom-0 left-0 right-0 bg-white p-3 shadow-2xl border-t flex justify-between items-center z-40">
+        <div>
+            <div class="text-xs text-gray-500">সেরা মূল্য:</div>
+            <div class="text-xl font-extrabold text-red-600">৳ {{ product_price }}</div>
+        </div>
+        <a href="#order_form" class="bg-red-600 text-white px-6 py-2.5 rounded-lg font-bold text-sm shadow pulse-btn">
+            অর্ডার সম্পূর্ণ করুন <i class="fa-solid fa-arrow-down ml-1"></i>
+        </a>
+    </div>
+
+    <!-- Footer Section -->
+    <footer class="bg-gray-900 text-gray-400 py-6 text-center text-sm mb-12 md:mb-0">
+        <p>© ২০২৪ আপনার শপের নাম। সর্বস্বত্ব সংরক্ষিত।</p>
+        <p class="mt-1 text-xs text-gray-500">যেকোনো প্রয়োজনে কল করুন: ০১৭০০-০০০০০</p>
+    </footer>
+
+    <!-- JavaScript Logic -->
+    <script>
+        // Countdown timer for the announcement bar.
+        (function () {
+            var display = document.getElementById('timer');
+            if (!display) return;
+            function pad(n) { return n < 10 ? '0' + n : String(n); }
+            var duration = 60 * 60 * 5 + 45 * 60 + 20; // 05:45:20
+            var remaining = duration;
+            setInterval(function () {
+                var h = Math.floor(remaining / 3600);
+                var m = Math.floor((remaining % 3600) / 60);
+                var s = remaining % 60;
+                display.textContent = pad(h) + ':' + pad(m) + ':' + pad(s);
+                if (--remaining < 0) remaining = duration;
+            }, 1000);
+        })();
+    </script>
+</body>
+</html>

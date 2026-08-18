@@ -1,0 +1,35 @@
+@extends('layouts.app')
+@section('title', 'Register')
+@section('content')
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="sf-card-surface" style="padding:30px">
+            <h2 class="fw-bold text-center mb-1">Create Account</h2>
+            <p class="text-center sf-faint mb-4" style="font-size:13.5px">Register a new account in seconds.</p>
+            @if($errors->any())
+                <div class="sf-form-msg sf-form-msg--error">{{ $errors->first() }}</div>
+            @endif
+            <form method="POST" action="{{ route('register') }}">
+                @csrf
+                <div class="sf-field">
+                    <label>Name <span class="req">*</span></label>
+                    <input id="name" type="text" class="sf-input" name="name" value="{{ old('name') }}" required />
+                </div>
+                <div class="sf-field">
+                    <label>Email Address <span class="req">*</span></label>
+                    <input id="email" type="email" class="sf-input" name="email" value="{{ old('email') }}" required />
+                </div>
+                <div class="sf-field">
+                    <label>Password <span class="req">*</span></label>
+                    <input id="password" type="password" class="sf-input" name="password" required />
+                </div>
+                <div class="sf-field">
+                    <label>Confirm Password <span class="req">*</span></label>
+                    <input id="password-confirm" type="password" class="sf-input" name="password_confirmation" required />
+                </div>
+                <button type="submit" class="sf-btn sf-btn--primary sf-btn--lg sf-btn--block">Register</button>
+            </form>
+        </div>
+    </div>
+</div>
+@endsection
