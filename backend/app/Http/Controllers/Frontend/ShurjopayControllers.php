@@ -130,7 +130,41 @@ class ShurjopayControllers extends Controller
     public function payment_cancel(Request $request)
     {
         Toastr::error('Your payment cancelled', 'Cancelled!');
+
+        if ($returnUrl = storefront_return_url(null, 'cancelled')) {
+            return redirect()->away($returnUrl);
+        }
+
         return redirect()->route('home');
+    }
+
+    /**
+     * Headless bridge: rebuild the checkout payload from an order and hand
+     * over to the ShurjoPay package (same $info shape used by order_save).
+     */
+    public function checkoutForOrder($order)
+    {
+        $order = Order::with('shipping')->findOrFail($order);
+
+        $shipping = $order->shipping;
+
+        $amount = (float) ($order->customer_payable_amount ?: $order->amount);
+
+        $info = [
+            'currency'         => 'BDT',
+            'amount'           => $amount,
+            'order_id'         => uniqid(),
+            'client_ip'        => request()->ip(),
+            'customer_name'    => $shipping->name ?? 'Customer',
+            'customer_phone'   => $shipping->phone ?? '',
+            'email'            => 'customer@example.com',
+            'customer_address' => $shipping->address ?? '',
+            'customer_city'    => $shipping->area ?? '',
+            'customer_country' => 'BD',
+            'value1'           => $order->id,
+        ];
+
+        return $this->checkout($info);
     }
 
     // =====================================

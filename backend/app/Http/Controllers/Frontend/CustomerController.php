@@ -933,6 +933,12 @@ public function order_save(Request $request)
         $order = Order::with(['orderdetails.size', 'orderdetails.color', 'shipping'])
             ->where('id', $id)
             ->firstOrFail();
+
+        // Headless mode: bounce the browser back to the React storefront.
+        if ($returnUrl = storefront_return_url($order, 'success')) {
+            return redirect()->away($returnUrl);
+        }
+
         return view('frontEnd.layouts.customer.order_success', compact('order'));
     }
 

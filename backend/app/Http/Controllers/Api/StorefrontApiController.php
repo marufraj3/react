@@ -575,6 +575,8 @@ class StorefrontApiController extends Controller
         }
 
         // 7) Save Order.
+        $isOnlinePayment = in_array($paymentMethod, ['bkash', 'shurjopay', 'uddoktapay', 'aamarpay'], true);
+
         $order = new Order();
         $order->invoice_id = (string) rand(11111, 99999);
         $order->amount = $grandTotal;
@@ -587,6 +589,13 @@ class StorefrontApiController extends Controller
         $order->coupon_code = $couponCode ? trim($couponCode) : null;
         $order->discount = $discount;
         $order->ip_address = $request->ip();
+
+        if ($isOnlinePayment) {
+            // Gateway controllers read these when no session amount is present.
+            $order->customer_payable_amount = $grandTotal;
+            $order->payment_gateway = $paymentMethod;
+        }
+
         $order->save();
 
         // 8) Shipping + Payment.
@@ -650,10 +659,31 @@ class StorefrontApiController extends Controller
             }
         }
 
+        // 11) Payment gateway redirect URL (online payments).
+        $redirectUrl = null;
+        if ($isOnlinePayment) {
+            switch ($paymentMethod) {
+                case 'bkash':
+                    $redirectUrl = url('/bkash/checkout-url/create').'?order_id='.$order->id;
+                    break;
+                case 'shurjopay':
+                    $redirectUrl = route('storefront.shurjopay.checkout', ['order' => $order->id]);
+                    break;
+                case 'uddoktapay':
+                    $redirectUrl = route('uddoktapay.checkout', ['order_id' => $order->id]);
+                    break;
+                case 'aamarpay':
+                    $redirectUrl = route('aamarpay.checkout', ['order_id' => $order->id]);
+                    break;
+            }
+        }
+
         return $this->json([
-            'order_id'   => $order->invoice_id,
-            'invoice_id' => $order->invoice_id,
-            'total'      => $grandTotal,
+            'order_id'     => $order->invoice_id,
+            'invoice_id'   => $order->invoice_id,
+            'total'        => $grandTotal,
+            'payment_method' => $paymentMethod,
+            'redirect_url' => $redirectUrl,
         ], 201, 'অর্ডার সফলভাবে গৃহীত হয়েছে!');
     }
 

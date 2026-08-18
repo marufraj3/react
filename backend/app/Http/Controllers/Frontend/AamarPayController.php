@@ -327,6 +327,10 @@ class AamarPayController extends Controller
             return redirect()->route($redirectRoute, $orderId);
         }
 
+        if ($returnUrl = storefront_return_url($order, 'failed')) {
+            return redirect()->away($returnUrl);
+        }
+
         return redirect()->route('customer.account');
     }
 
@@ -358,6 +362,10 @@ class AamarPayController extends Controller
             return redirect()->route($redirectRoute, $orderId);
         }
         
+        if ($returnUrl = storefront_return_url($order, 'cancelled')) {
+            return redirect()->away($returnUrl);
+        }
+
         return redirect()->route('customer.account');
     }
 

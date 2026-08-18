@@ -142,9 +142,16 @@ export const CheckoutPage: React.FC = () => {
       if (!res.success) {
         setFormError(res.message);
         setIsSubmitting(false);
+        return;
+      }
+
+      // Online payments: hand the browser over to the gateway checkout URL.
+      if (res.redirectUrl) {
+        window.location.href = res.redirectUrl;
+        return;
       }
     } catch {
-      setFormError('অর্ডার প্রক্রিয়া করার সময় ত্রুটি হয়েছে।');
+      setFormError('অর্ডার প্রক্রিয়া করার সময় ত্রুটি হয়েছে।');
       setIsSubmitting(false);
     }
   };

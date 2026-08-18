@@ -58,6 +58,8 @@ export interface PlaceOrderResult {
   order_id: string;
   invoice_id: string;
   total: number;
+  payment_method?: string;
+  redirect_url?: string | null;
 }
 
 interface ApiEnvelope<T> {

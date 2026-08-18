@@ -58,6 +58,19 @@ return [
 
     'url' => env('APP_URL', 'http://localhost'),
 
+    /*
+    |--------------------------------------------------------------------------
+    | React storefront URL (headless mode)
+    |--------------------------------------------------------------------------
+    |
+    | When set, payment callbacks redirect the browser back to the React
+    | storefront (with ?order=&payment= query params) instead of the Laravel
+    | Blade success/cancel pages.
+    |
+    */
+
+    'store_url' => env('STORE_URL', null),
+
     'asset_url' => env('ASSET_URL'),
 
     /*

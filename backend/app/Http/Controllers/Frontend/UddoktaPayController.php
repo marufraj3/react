@@ -225,6 +225,10 @@ class UddoktaPayController extends Controller
      */
     public function cancel()
     {
+        if ($returnUrl = storefront_return_url(null, 'cancelled')) {
+            return redirect()->away($returnUrl);
+        }
+
         return redirect()->route('customer.account')
                          ->with('error', 'Payment cancelled by user.');
     }

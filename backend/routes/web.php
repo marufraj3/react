@@ -338,6 +338,10 @@ Route::match(['get', 'post'], '/aamarpay/success', [AamarPayController::class, '
 Route::match(['get', 'post'], '/aamarpay/fail', [AamarPayController::class, 'fail'])->name('aamarpay.fail');
 Route::get('/aamarpay/cancel', [AamarPayController::class, 'cancel'])->name('aamarpay.cancel');
 
+// ✅ হেডলেস শুরজোপে ব্রিজ — রিঅ্যাক্ট স্টোরফ্রন্ট থেকে রিডাইরেক্ট
+Route::get('/shurjopay/checkout/{order}', [\App\Http\Controllers\Frontend\ShurjopayControllers::class, 'checkoutForOrder'])
+    ->name('storefront.shurjopay.checkout');
+
 // ✅ অর্ডার সফলতার রাউট (CustomerController থেকে)
 Route::get('customer/order-success/{id}', [CustomerController::class, 'order_success'])
      ->name('customer.order_success');

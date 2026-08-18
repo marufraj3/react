@@ -144,7 +144,7 @@ interface StoreContextType {
 
   // Order Operations
   lastCreatedOrder: Order | null;
-  createOrder: (orderData: Omit<Order, 'id' | 'created_at' | 'status'>) => Promise<{ success: boolean; orderId?: string; message: string }>;
+  createOrder: (orderData: Omit<Order, 'id' | 'created_at' | 'status'>) => Promise<{ success: boolean; orderId?: string; message: string; redirectUrl?: string | null }>;
   trackOrder: (orderId: string, phone: string) => Order | null;
   /** Server-backed variant — hits the Laravel API when VITE_API_URL is set. */
   trackOrderAsync: (orderId: string, phone: string) => Promise<Order | null>;
@@ -319,6 +319,36 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setToasts((prev) => prev.filter((t) => t.id !== id));
   };
 
+  // Payment gateway return handling — Laravel redirects back with
+  // ?order={invoice}&payment=success|cancelled|failed on the storefront URL.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const payment = params.get('payment');
+    const order = params.get('order');
+
+    if (!payment && !order) return;
+
+    // Clean the URL so a refresh doesn't re-trigger the handler.
+    window.history.replaceState({}, '', window.location.pathname);
+
+    if (payment === 'success' && order && API_ENABLED) {
+      trackOrderApi(order, '').then((found) => {
+        if (found) {
+          setOrders((prev) => (prev.some((o) => o.id === found.id) ? prev : [found, ...prev]));
+          navigate('order_success', { orderId: found.id });
+        } else {
+          navigate('home');
+        }
+      });
+    } else if (payment === 'cancelled' || payment === 'failed') {
+      showToast('পেমেন্ট সম্পন্ন হয়নি। আবার চেষ্টা করুন অথবা হটলাইনে যোগাযোগ করুন।', 'error');
+      navigate('home');
+    } else {
+      navigate('home');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Cart Calculations
   const cartSubtotal = cart.reduce((acc, item) => acc + item.unitPrice * item.quantity, 0);
   const cartTotalItems = cart.reduce((acc, item) => acc + item.quantity, 0);
@@ -486,6 +516,17 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         }
 
         showToast(`🎉 আপনার অর্ডারটি সফলভাবে গৃহীত হয়েছে! অর্ডার আইডি: ${result.order_id}`, 'success');
+
+        // Online payments: hand the browser over to the gateway.
+        if (result.redirect_url) {
+          return {
+            success: true,
+            orderId: result.order_id,
+            message: 'পেমেন্ট গেটওয়েতে নিয়ে যাওয়া হচ্ছে…',
+            redirectUrl: result.redirect_url,
+          };
+        }
+
         navigate('order_success', { orderId: result.order_id });
 
         return { success: true, orderId: result.order_id, message: 'অর্ডার সফলভাবে সম্পন্ন হয়েছে!' };

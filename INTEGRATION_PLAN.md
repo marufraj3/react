@@ -58,7 +58,7 @@ Browser
 | GET | `/api/v1/storefront/search?q=` | live search |
 | GET | `/api/v1/storefront/blogs` · `blogs/{slug}` | blog list / detail |
 | POST | `/api/v1/storefront/coupons/apply` | validate coupon |
-| POST | `/api/v1/storefront/orders` | create order (restriction + stock + coupon + shipping logic) |
+| POST | `/api/v1/storefront/orders` | create order (restriction + stock + coupon + shipping logic); returns `redirect_url` for online payments |
 | GET | `/api/v1/storefront/orders/track/{invoice}?phone=` | order tracking |
 | POST | `/api/v1/storefront/auth/register` | register customer (issues Sanctum token) |
 | POST | `/api/v1/storefront/auth/login` | login by phone/email (issues Sanctum token) |
@@ -139,11 +139,27 @@ VITE_API_URL=http://localhost:8000 VITE_BACKEND_PROXY=http://localhost:8000 npm 
   Laravel side; the storefront API currently places COD/online orders and the
   Laravel payment flow completes the rest.
 
+## Online payments (bKash / ShurjoPay / UddoktaPay / aamarPay)
+
+- `POST /api/v1/storefront/orders` returns a `redirect_url` for online payment
+  methods:
+  - bKash → `/bkash/checkout-url/create?order_id=…`
+  - ShurjoPay → `/shurjopay/checkout/{order}` (headless bridge route)
+  - UddoktaPay → `/uddoktapay/checkout?order_id=…`
+  - aamarPay → `/aamarpay/checkout?order_id=…`
+- The React checkout redirects the browser (`window.location.href`) to that URL;
+  the gateway then calls back into Laravel (verify/ipn/success/callback), which
+  marks the payment paid and redirects the user back.
+- **Return to React**: set `STORE_URL` (React app URL) in the Laravel `.env`.
+  All success callbacks funnel through `customer.order_success`, which (when
+  `STORE_URL` is set) redirects to `{STORE_URL}?order={invoice}&payment=success`.
+  Cancel/fail endpoints redirect with `payment=cancelled|failed`. The React app
+  reads these query params on boot, fetches the order from the API, and shows
+  the success page. Without `STORE_URL` the original Blade pages are used.
+
 ## Suggested next phases
 
-1. **Wire payments**: return a gateway redirect URL from `POST /orders` for
-   bKash/ShurjoPay/UddoktaPay/aamarPay and redirect the React checkout.
-2. **Profile management**: let authenticated customers edit name/address and
+1. **Profile management**: let authenticated customers edit name/address and
    change password (endpoints exist on the Blade side — mirror them in the API).
-3. **Migrate admin to React** screen-by-screen if you ever want a unified
+2. **Migrate admin to React** screen-by-screen if you ever want a unified
    React admin (Blade admin already covers everything today).
