@@ -202,3 +202,40 @@ export async function myOrdersApi(token: string): Promise<Order[]> {
     },
   });
 }
+
+export async function updateProfileApi(
+  token: string,
+  payload: {
+    name: string;
+    phone: string;
+    email?: string;
+    address?: string;
+    district?: string;
+    area?: string;
+  },
+): Promise<AuthUser> {
+  return request<AuthUser>('/auth/profile', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function changePasswordApi(
+  token: string,
+  payload: { old_password: string; new_password: string; confirm_password: string },
+): Promise<void> {
+  await request('/auth/password', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(payload),
+  });
+}

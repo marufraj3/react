@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Package,
   Download,
@@ -9,13 +9,16 @@ import {
   FileText,
   CheckCircle2,
   ExternalLink,
-  ShoppingBag
+  ShoppingBag,
+  Lock,
+  MapPin,
+  Loader2,
 } from 'lucide-react';
 import { useStore } from '../../context/StoreContext';
 import { ProductCard } from './ProductCard';
 
 interface CustomerAccountPageProps {
-  initialTab?: 'orders' | 'downloads' | 'wishlist' | 'refund';
+  initialTab?: 'orders' | 'downloads' | 'wishlist' | 'refund' | 'profile';
 }
 
 export const CustomerAccountPage: React.FC<CustomerAccountPageProps> = ({ initialTab = 'orders' }) => {
@@ -30,8 +33,11 @@ export const CustomerAccountPage: React.FC<CustomerAccountPageProps> = ({ initia
     settings,
     navigate,
     showToast,
+    authUser,
+    updateProfile,
+    changePassword,
   } = useStore();
-  const [activeTab, setActiveTab] = useState<'orders' | 'downloads' | 'wishlist' | 'refund'>(initialTab);
+  const [activeTab, setActiveTab] = useState<'orders' | 'downloads' | 'wishlist' | 'refund' | 'profile'>(initialTab);
 
   // In API mode show the authenticated customer's real orders; otherwise the demo data.
   const displayOrders = isAuthenticated ? myOrders : orders;
@@ -55,6 +61,76 @@ export const CustomerAccountPage: React.FC<CustomerAccountPageProps> = ({ initia
 
   const handleDownload = (filename?: string) => {
     showToast(`ডাউনলোড শুরু হচ্ছে: ${filename || 'digital_product.pdf'}`, 'success');
+  };
+
+  // Profile form state
+  const [profileName, setProfileName] = useState(authUser?.name ?? '');
+  const [profilePhone, setProfilePhone] = useState(authUser?.phone ?? '');
+  const [profileEmail, setProfileEmail] = useState(authUser?.email ?? '');
+  const [profileAddress, setProfileAddress] = useState(authUser?.address ?? '');
+  const [profileSaving, setProfileSaving] = useState(false);
+  const [profileError, setProfileError] = useState<string | null>(null);
+
+  // Sync the form once the session is restored (authUser may hydrate late).
+  useEffect(() => {
+    if (authUser) {
+      setProfileName(authUser.name ?? '');
+      setProfilePhone(authUser.phone ?? '');
+      setProfileEmail(authUser.email ?? '');
+      setProfileAddress(authUser.address ?? '');
+    }
+  }, [authUser]);
+
+  // Password form state
+  const [oldPassword, setOldPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [passSaving, setPassSaving] = useState(false);
+  const [passError, setPassError] = useState<string | null>(null);
+
+  const handleProfileSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setProfileError(null);
+    if (!profileName.trim() || !profilePhone.trim()) {
+      setProfileError('নাম ও ফোন নম্বর আবশ্যক।');
+      return;
+    }
+    setProfileSaving(true);
+    const res = await updateProfile({
+      name: profileName.trim(),
+      phone: profilePhone.trim(),
+      email: profileEmail.trim() || undefined,
+      address: profileAddress.trim() || undefined,
+    });
+    setProfileSaving(false);
+    if (!res.success) setProfileError(res.message);
+  };
+
+  const handlePasswordSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPassError(null);
+    if (!oldPassword || newPassword.length < 6) {
+      setPassError('পুরনো পাসওয়ার্ড ও কমপক্ষে ৬ অক্ষরের নতুন পাসওয়ার্ড দিন।');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setPassError('নতুন পাসওয়ার্ড দুটি মিলছে না।');
+      return;
+    }
+    setPassSaving(true);
+    const res = await changePassword({
+      old_password: oldPassword,
+      new_password: newPassword,
+      confirm_password: confirmPassword,
+    });
+    setPassSaving(false);
+    if (res.success) {
+      setOldPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+    } else {
+      setPassError(res.message);
+    }
   };
 
   return (
@@ -120,6 +196,20 @@ export const CustomerAccountPage: React.FC<CustomerAccountPageProps> = ({ initia
             <RotateCcw className="w-3.5 h-3.5" />
             <span>রিটার্ন ও রিফান্ড</span>
           </button>
+
+          {isAuthenticated && (
+            <button
+              onClick={() => setActiveTab('profile')}
+              className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                activeTab === 'profile'
+                  ? 'bg-gray-900 text-white shadow-xs'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              <User className="w-3.5 h-3.5" />
+              <span>প্রোফাইল</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -248,6 +338,118 @@ export const CustomerAccountPage: React.FC<CustomerAccountPageProps> = ({ initia
               </button>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Profile Tab */}
+      {activeTab === 'profile' && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Edit Profile */}
+          <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-xs space-y-4">
+            <h2 className="text-base font-extrabold text-gray-900 flex items-center gap-2">
+              <User className="w-4 h-4 text-red-600" /> প্রোফাইল এডিট
+            </h2>
+            <form onSubmit={handleProfileSave} className="space-y-3.5">
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">নাম *</label>
+                <input
+                  type="text"
+                  value={profileName}
+                  onChange={(e) => setProfileName(e.target.value)}
+                  className="w-full bg-gray-50 text-sm rounded-xl px-3.5 py-2.5 border border-gray-200 outline-hidden focus:border-red-500 focus:bg-white"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">ফোন নম্বর *</label>
+                <input
+                  type="tel"
+                  value={profilePhone}
+                  onChange={(e) => setProfilePhone(e.target.value)}
+                  className="w-full bg-gray-50 text-sm rounded-xl px-3.5 py-2.5 border border-gray-200 outline-hidden focus:border-red-500 focus:bg-white font-mono"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">ইমেইল (ঐচ্ছিক)</label>
+                <input
+                  type="email"
+                  value={profileEmail}
+                  onChange={(e) => setProfileEmail(e.target.value)}
+                  className="w-full bg-gray-50 text-sm rounded-xl px-3.5 py-2.5 border border-gray-200 outline-hidden focus:border-red-500 focus:bg-white"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">ঠিকানা</label>
+                <textarea
+                  rows={2}
+                  value={profileAddress}
+                  onChange={(e) => setProfileAddress(e.target.value)}
+                  className="w-full bg-gray-50 text-sm rounded-xl px-3.5 py-2.5 border border-gray-200 outline-hidden focus:border-red-500 focus:bg-white resize-none"
+                />
+              </div>
+              {profileError && (
+                <div className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-xl text-xs font-semibold">
+                  {profileError}
+                </div>
+              )}
+              <button
+                type="submit"
+                disabled={profileSaving}
+                className="w-full bg-red-600 hover:bg-red-700 disabled:opacity-60 text-white text-xs font-bold py-3 rounded-xl shadow-sm flex items-center justify-center gap-2 cursor-pointer"
+              >
+                {profileSaving && <Loader2 className="w-4 h-4 animate-spin" />}
+                প্রোফাইল সেভ করুন
+              </button>
+            </form>
+          </div>
+
+          {/* Change Password */}
+          <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-xs space-y-4">
+            <h2 className="text-base font-extrabold text-gray-900 flex items-center gap-2">
+              <Lock className="w-4 h-4 text-red-600" /> পাসওয়ার্ড পরিবর্তন
+            </h2>
+            <form onSubmit={handlePasswordSave} className="space-y-3.5">
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">পুরনো পাসওয়ার্ড *</label>
+                <input
+                  type="password"
+                  value={oldPassword}
+                  onChange={(e) => setOldPassword(e.target.value)}
+                  className="w-full bg-gray-50 text-sm rounded-xl px-3.5 py-2.5 border border-gray-200 outline-hidden focus:border-red-500 focus:bg-white"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">নতুন পাসওয়ার্ড *</label>
+                <input
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  className="w-full bg-gray-50 text-sm rounded-xl px-3.5 py-2.5 border border-gray-200 outline-hidden focus:border-red-500 focus:bg-white"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">নতুন পাসওয়ার্ড (আবার) *</label>
+                <input
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className="w-full bg-gray-50 text-sm rounded-xl px-3.5 py-2.5 border border-gray-200 outline-hidden focus:border-red-500 focus:bg-white"
+                />
+              </div>
+              {passError && (
+                <div className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-xl text-xs font-semibold">
+                  {passError}
+                </div>
+              )}
+              <button
+                type="submit"
+                disabled={passSaving}
+                className="w-full bg-gray-900 hover:bg-black disabled:opacity-60 text-white text-xs font-bold py-3 rounded-xl shadow-sm flex items-center justify-center gap-2 cursor-pointer"
+              >
+                {passSaving && <Loader2 className="w-4 h-4 animate-spin" />}
+                পাসওয়ার্ড আপডেট করুন
+              </button>
+            </form>
+          </div>
         </div>
       )}
 

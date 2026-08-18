@@ -232,10 +232,13 @@ class StorefrontApiController extends Controller
     private function customerPayload(Customer $c): array
     {
         return [
-            'id'    => (int) $c->id,
-            'name'  => $c->name,
-            'phone' => $c->phone,
-            'email' => $c->email ?? null,
+            'id'       => (int) $c->id,
+            'name'     => $c->name,
+            'phone'    => $c->phone,
+            'email'    => $c->email ?? null,
+            'address'  => $c->address ?? null,
+            'district' => $c->district ?? null,
+            'area'     => $c->area ?? null,
         ];
     }
 
@@ -817,6 +820,60 @@ class StorefrontApiController extends Controller
             ->values();
 
         return $this->json($orders);
+    }
+
+    /** POST /api/v1/storefront/auth/profile */
+    public function updateProfile(Request $request)
+    {
+        $customer = $this->customerFromToken($request);
+
+        if (! $customer) {
+            return $this->json(null, 401, 'Unauthenticated.');
+        }
+
+        $request->validate([
+            'name'    => 'required|string|max:191',
+            'phone'   => 'required|string|max:40|unique:customers,phone,'.$customer->id,
+            'email'   => 'nullable|email|max:191|unique:customers,email,'.$customer->id,
+            'address' => 'nullable|string|max:500',
+            'district'=> 'nullable|string|max:100',
+            'area'    => 'nullable|string|max:100',
+        ]);
+
+        $customer->name = $request->input('name');
+        $customer->phone = $request->input('phone');
+        $customer->email = $request->input('email');
+        $customer->address = $request->input('address');
+        $customer->district = $request->input('district');
+        $customer->area = $request->input('area');
+        $customer->save();
+
+        return $this->json($this->customerPayload($customer), 200, 'প্রোফাইল সফলভাবে আপডেট হয়েছে।');
+    }
+
+    /** POST /api/v1/storefront/auth/password */
+    public function changePassword(Request $request)
+    {
+        $customer = $this->customerFromToken($request);
+
+        if (! $customer) {
+            return $this->json(null, 401, 'Unauthenticated.');
+        }
+
+        $request->validate([
+            'old_password'     => 'required|string',
+            'new_password'     => 'required|string|min:6',
+            'confirm_password' => 'required|string|same:new_password',
+        ]);
+
+        if (! Hash::check($request->input('old_password'), $customer->password)) {
+            return $this->json(null, 422, 'পুরনো পাসওয়ার্ডটি সঠিক নয়।');
+        }
+
+        $customer->password = Hash::make($request->input('new_password'));
+        $customer->save();
+
+        return $this->json(null, 200, 'পাসওয়ার্ড পরিবর্তন হয়েছে।');
     }
 
     /** POST /api/v1/storefront/reviews */

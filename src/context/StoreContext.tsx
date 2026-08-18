@@ -49,6 +49,8 @@ import {
   logoutApi,
   meApi,
   myOrdersApi,
+  updateProfileApi,
+  changePasswordApi,
 } from '../api/client';
 
 export type ViewType =
@@ -141,6 +143,8 @@ interface StoreContextType {
   registerUser: (data: { name: string; phone: string; email?: string; password: string }) => Promise<{ success: boolean; message: string }>;
   logout: () => Promise<void>;
   refreshMyOrders: () => Promise<void>;
+  updateProfile: (data: { name: string; phone: string; email?: string; address?: string; district?: string; area?: string }) => Promise<{ success: boolean; message: string }>;
+  changePassword: (data: { old_password: string; new_password: string; confirm_password: string }) => Promise<{ success: boolean; message: string }>;
 
   // Order Operations
   lastCreatedOrder: Order | null;
@@ -708,6 +712,34 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     showToast('লগআউট হয়েছে।', 'info');
   };
 
+  const updateProfile = async (data: { name: string; phone: string; email?: string; address?: string; district?: string; area?: string }) => {
+    if (!authToken) {
+      return { success: false, message: 'আগে লগইন করুন।' };
+    }
+    try {
+      const user = await updateProfileApi(authToken, data);
+      setAuthUser(user);
+      setStoredItem('auth_user', user);
+      showToast('প্রোফাইল সফলভাবে আপডেট হয়েছে!', 'success');
+      return { success: true, message: 'প্রোফাইল আপডেট হয়েছে।' };
+    } catch (err) {
+      return { success: false, message: err instanceof Error ? err.message : 'প্রোফাইল আপডেট ব্যর্থ হয়েছে।' };
+    }
+  };
+
+  const changePassword = async (data: { old_password: string; new_password: string; confirm_password: string }) => {
+    if (!authToken) {
+      return { success: false, message: 'আগে লগইন করুন।' };
+    }
+    try {
+      await changePasswordApi(authToken, data);
+      showToast('পাসওয়ার্ড পরিবর্তন হয়েছে!', 'success');
+      return { success: true, message: 'পাসওয়ার্ড পরিবর্তন হয়েছে।' };
+    } catch (err) {
+      return { success: false, message: err instanceof Error ? err.message : 'পাসওয়ার্ড পরিবর্তন ব্যর্থ হয়েছে।' };
+    }
+  };
+
   const openAuthModal = (mode: 'login' | 'register' = 'login') => {
     setAuthModalMode(mode);
     setAuthModalOpen(true);
@@ -1004,6 +1036,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         registerUser,
         logout,
         refreshMyOrders,
+        updateProfile,
+        changePassword,
         lastCreatedOrder,
         createOrder,
         trackOrder,

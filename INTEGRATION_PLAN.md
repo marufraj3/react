@@ -65,6 +65,8 @@ Browser
 | POST | `/api/v1/storefront/auth/logout` | revoke bearer token |
 | GET | `/api/v1/storefront/auth/me` | authenticated customer profile |
 | GET | `/api/v1/storefront/auth/orders` | authenticated customer's order history |
+| POST | `/api/v1/storefront/auth/profile` | update name/phone/email/address |
+| POST | `/api/v1/storefront/auth/password` | change password (old + new) |
 | POST | `/api/v1/storefront/reviews` | submit review |
 | POST | `/api/v1/storefront/complaints` | submit complaint |
 | POST | `/api/v1/storefront/contact` | contact message |
@@ -159,7 +161,8 @@ VITE_API_URL=http://localhost:8000 VITE_BACKEND_PROXY=http://localhost:8000 npm 
 
 ## Suggested next phases
 
-1. **Profile management**: let authenticated customers edit name/address and
-   change password (endpoints exist on the Blade side — mirror them in the API).
+1. **Digital download delivery**: expose downloadable file/link for paid
+   digital orders in the storefront "My Account → Downloads" (the Blade side
+   already generates download tokens via `DigitalDownload` + `DigitalDownloadController`).
 2. **Migrate admin to React** screen-by-screen if you ever want a unified
    React admin (Blade admin already covers everything today).

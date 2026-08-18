@@ -243,4 +243,7 @@ export interface AuthUser {
   name: string;
   phone: string;
   email?: string;
+  address?: string;
+  district?: string;
+  area?: string;
 }
