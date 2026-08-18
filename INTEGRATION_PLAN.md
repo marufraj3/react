@@ -67,6 +67,7 @@ Browser
 | GET | `/api/v1/storefront/auth/orders` | authenticated customer's order history |
 | POST | `/api/v1/storefront/auth/profile` | update name/phone/email/address |
 | POST | `/api/v1/storefront/auth/password` | change password (old + new) |
+| GET | `/api/v1/storefront/auth/downloads` | authenticated customer's digital downloads |
 | POST | `/api/v1/storefront/reviews` | submit review |
 | POST | `/api/v1/storefront/complaints` | submit complaint |
 | POST | `/api/v1/storefront/contact` | contact message |
@@ -141,6 +142,22 @@ VITE_API_URL=http://localhost:8000 VITE_BACKEND_PROXY=http://localhost:8000 npm 
   Laravel side; the storefront API currently places COD/online orders and the
   Laravel payment flow completes the rest.
 
+## Digital downloads
+
+- After an online payment succeeds, the existing gateway controllers
+  (`BkashController`, `UddoktaPayController`, `AamarPayController`,
+  `ShurjopayControllers`) generate `DigitalDownload` rows (UUID token, file
+  path, remaining-download limit, expiry) — the same mechanism used by the
+  Blade storefront.
+- `GET /api/v1/storefront/auth/downloads` lists the authenticated customer's
+  downloads; each item carries a `download_url` pointing at
+  `GET /digital-download/{token}` (browser-navigable, streamed from the
+  `private` disk with limit/expiry enforcement).
+- The React "My Account → Downloads" tab renders these in API mode and falls
+  back to the demo order-derived list otherwise.
+- Added a `digital_downloads` migration so `php artisan migrate` also creates
+  the table (the original app only shipped it inside the SQL dump).
+
 ## Online payments (bKash / ShurjoPay / UddoktaPay / aamarPay)
 
 - `POST /api/v1/storefront/orders` returns a `redirect_url` for online payment
@@ -161,8 +178,8 @@ VITE_API_URL=http://localhost:8000 VITE_BACKEND_PROXY=http://localhost:8000 npm 
 
 ## Suggested next phases
 
-1. **Digital download delivery**: expose downloadable file/link for paid
-   digital orders in the storefront "My Account → Downloads" (the Blade side
-   already generates download tokens via `DigitalDownload` + `DigitalDownloadController`).
+1. **Deployment prep**: production checklist — build the React app, configure
+   `STORE_URL` + `VITE_API_URL`, `php artisan storage:link`, queue worker for
+   SMS/Facebook CAPI jobs, cron schedule (courier status, stock alerts).
 2. **Migrate admin to React** screen-by-screen if you ever want a unified
    React admin (Blade admin already covers everything today).

@@ -19,6 +19,7 @@ import {
   CustomerComplaint,
   ContactMessage,
   AuthUser,
+  DigitalDownloadItem,
 } from '../types';
 import {
   initialSettings,
@@ -51,6 +52,7 @@ import {
   myOrdersApi,
   updateProfileApi,
   changePasswordApi,
+  myDownloadsApi,
 } from '../api/client';
 
 export type ViewType =
@@ -137,12 +139,14 @@ interface StoreContextType {
   myOrders: Order[];
   authModalOpen: boolean;
   authModalMode: 'login' | 'register';
+  downloads: DigitalDownloadItem[];
   openAuthModal: (mode?: 'login' | 'register') => void;
   closeAuthModal: () => void;
   login: (login: string, password: string) => Promise<{ success: boolean; message: string }>;
   registerUser: (data: { name: string; phone: string; email?: string; password: string }) => Promise<{ success: boolean; message: string }>;
   logout: () => Promise<void>;
   refreshMyOrders: () => Promise<void>;
+  refreshDownloads: () => Promise<void>;
   updateProfile: (data: { name: string; phone: string; email?: string; address?: string; district?: string; area?: string }) => Promise<{ success: boolean; message: string }>;
   changePassword: (data: { old_password: string; new_password: string; confirm_password: string }) => Promise<{ success: boolean; message: string }>;
 
@@ -303,6 +307,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [authUser, setAuthUser] = useState<AuthUser | null>(() => getStoredItem('auth_user', null));
   const [authToken, setAuthToken] = useState<string | null>(() => getStoredItem('auth_token', null));
   const [myOrders, setMyOrders] = useState<Order[]>([]);
+  const [downloads, setDownloads] = useState<DigitalDownloadItem[]>([]);
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [authModalMode, setAuthModalMode] = useState<'login' | 'register'>('login');
 
@@ -665,6 +670,17 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   };
 
+  const refreshDownloads = async (token?: string) => {
+    const t = token ?? authToken;
+    if (!t) return;
+    try {
+      const items = await myDownloadsApi(t);
+      setDownloads(items);
+    } catch {
+      // Ignore — session may have expired.
+    }
+  };
+
   const login = async (login: string, password: string) => {
     if (!API_ENABLED) {
       return { success: false, message: 'API মোড চালু নেই।' };
@@ -673,6 +689,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       const res = await loginApi(login.trim(), password);
       applyAuthSession(res.token, res.user);
       await refreshMyOrders(res.token);
+      await refreshDownloads(res.token);
       setAuthModalOpen(false);
       showToast(`স্বাগতম, ${res.user.name}!`, 'success');
       return { success: true, message: 'লগইন সফল হয়েছে!' };
@@ -703,6 +720,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setAuthToken(null);
     setAuthUser(null);
     setMyOrders([]);
+    setDownloads([]);
     try {
       localStorage.removeItem(LOCAL_STORAGE_KEY_PREFIX + 'auth_token');
       localStorage.removeItem(LOCAL_STORAGE_KEY_PREFIX + 'auth_user');
@@ -759,6 +777,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           setStoredItem('auth_user', user);
           const orders = await myOrdersApi(authToken);
           if (!cancelled) setMyOrders(orders);
+          const downloads = await myDownloadsApi(authToken);
+          if (!cancelled) setDownloads(downloads);
         }
       } catch {
         // Invalid/expired token — clear it.
@@ -1030,12 +1050,14 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         myOrders,
         authModalOpen,
         authModalMode,
+        downloads,
         openAuthModal,
         closeAuthModal,
         login,
         registerUser,
         logout,
         refreshMyOrders,
+        refreshDownloads,
         updateProfile,
         changePassword,
         lastCreatedOrder,

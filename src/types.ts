@@ -247,3 +247,14 @@ export interface AuthUser {
   district?: string;
   area?: string;
 }
+
+export interface DigitalDownloadItem {
+  id: number;
+  order_id: number;
+  product_id: number;
+  product_name?: string;
+  file_name?: string;
+  download_url: string;
+  remaining_downloads: number;
+  expires_at?: string | null;
+}

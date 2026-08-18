@@ -12,6 +12,7 @@ import type {
   BlogPost,
   Category,
   Coupon,
+  DigitalDownloadItem,
   GeneralSettings,
   Order,
   Product,
@@ -195,6 +196,16 @@ export async function meApi(token: string): Promise<AuthUser> {
 
 export async function myOrdersApi(token: string): Promise<Order[]> {
   return request<Order[]>('/auth/orders', {
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+  });
+}
+
+export async function myDownloadsApi(token: string): Promise<DigitalDownloadItem[]> {
+  return request<DigitalDownloadItem[]>('/auth/downloads', {
     headers: {
       'Content-Type': 'application/json',
       Accept: 'application/json',

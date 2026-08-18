@@ -10,6 +10,7 @@ use App\Models\Complaint;
 use App\Models\ContactMessage;
 use App\Models\Coupon;
 use App\Models\Customer;
+use App\Models\DigitalDownload;
 use App\Models\GeneralSetting;
 use App\Models\Order;
 use App\Models\OrderDetails;
@@ -820,6 +821,34 @@ class StorefrontApiController extends Controller
             ->values();
 
         return $this->json($orders);
+    }
+
+    /** GET /api/v1/storefront/auth/downloads */
+    public function myDownloads(Request $request)
+    {
+        $customer = $this->customerFromToken($request);
+
+        if (! $customer) {
+            return $this->json(null, 401, 'Unauthenticated.');
+        }
+
+        $downloads = DigitalDownload::with('product:id,name')
+            ->where('customer_id', $customer->id)
+            ->orderBy('id', 'desc')
+            ->get()
+            ->map(fn ($d) => [
+                'id'                   => (int) $d->id,
+                'order_id'             => (int) $d->order_id,
+                'product_id'           => (int) $d->product_id,
+                'product_name'         => $d->product?->name ?? null,
+                'file_name'            => $d->file_path ? basename($d->file_path) : null,
+                'download_url'         => url('/digital-download/'.$d->token),
+                'remaining_downloads'  => (int) ($d->remaining_downloads ?? 0),
+                'expires_at'           => $d->expires_at ? (string) $d->expires_at : null,
+            ])
+            ->values();
+
+        return $this->json($downloads);
     }
 
     /** POST /api/v1/storefront/auth/profile */
