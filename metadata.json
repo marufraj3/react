@@ -1,0 +1,6 @@
+{
+  "name": "Shop Genie eCommerce",
+  "description": "Full-stack eCommerce application with high-converting Bengali/English Storefront, Quick Order, Shopping Cart, Live Order Tracking, and Modern Admin Panel converted from Laravel.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

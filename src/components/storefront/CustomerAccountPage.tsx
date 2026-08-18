@@ -1,0 +1,285 @@
+import React, { useState } from 'react';
+import {
+  Package,
+  Download,
+  Heart,
+  RotateCcw,
+  User,
+  Phone,
+  FileText,
+  CheckCircle2,
+  ExternalLink,
+  ShoppingBag
+} from 'lucide-react';
+import { useStore } from '../../context/StoreContext';
+import { ProductCard } from './ProductCard';
+
+interface CustomerAccountPageProps {
+  initialTab?: 'orders' | 'downloads' | 'wishlist' | 'refund';
+}
+
+export const CustomerAccountPage: React.FC<CustomerAccountPageProps> = ({ initialTab = 'orders' }) => {
+  const { orders, wishlist, products, settings, navigate, showToast } = useStore();
+  const [activeTab, setActiveTab] = useState<'orders' | 'downloads' | 'wishlist' | 'refund'>(initialTab);
+
+  // Filter digital items from orders
+  const digitalOrders = orders.filter((o) => o.items.some((i) => i.is_digital));
+
+  const wishlistedProducts = products.filter((p) => wishlist.includes(p.id));
+
+  // Refund Form State
+  const [refundOrderId, setRefundOrderId] = useState('');
+  const [refundReason, setRefundReason] = useState('');
+  const [refundSubmitted, setRefundSubmitted] = useState(false);
+
+  const handleRefundSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!refundOrderId.trim() || !refundReason.trim()) return;
+    setRefundSubmitted(true);
+    showToast('রিটার্ন/রিফান্ড আবেদন সফলভাবে জমা হয়েছে। কাস্টমার সাপোর্ট আপনাকে কল করবে।', 'success');
+  };
+
+  const handleDownload = (filename?: string) => {
+    showToast(`ডাউনলোড শুরু হচ্ছে: ${filename || 'digital_product.pdf'}`, 'success');
+  };
+
+  return (
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-6 animate-in fade-in duration-200">
+      {/* Account Header */}
+      <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="w-12 h-12 rounded-2xl bg-red-600 text-white flex items-center justify-center font-bold text-xl">
+            <User className="w-6 h-6" />
+          </div>
+          <div>
+            <h1 className="text-xl font-extrabold text-gray-950">কাস্টমার ড্যাশবোর্ড</h1>
+            <p className="text-xs text-gray-500">আপনার অর্ডার ও ডিজিটাল পণ্যের হিসাব</p>
+          </div>
+        </div>
+
+        {/* Quick Nav Tabs */}
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={() => setActiveTab('orders')}
+            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+              activeTab === 'orders'
+                ? 'bg-gray-900 text-white shadow-xs'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
+          >
+            <Package className="w-3.5 h-3.5" />
+            <span>অর্ডার হিস্ট্রি ({orders.length})</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('downloads')}
+            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+              activeTab === 'downloads'
+                ? 'bg-gray-900 text-white shadow-xs'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
+          >
+            <Download className="w-3.5 h-3.5" />
+            <span>ডিজিটাল ডাউনলোড</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('wishlist')}
+            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+              activeTab === 'wishlist'
+                ? 'bg-gray-900 text-white shadow-xs'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
+          >
+            <Heart className="w-3.5 h-3.5" />
+            <span>উইশলিস্ট ({wishlist.length})</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('refund')}
+            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+              activeTab === 'refund'
+                ? 'bg-gray-900 text-white shadow-xs'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
+          >
+            <RotateCcw className="w-3.5 h-3.5" />
+            <span>রিটার্ন ও রিফান্ড</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Orders Tab */}
+      {activeTab === 'orders' && (
+        <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-xs space-y-4">
+          <h2 className="text-base font-extrabold text-gray-900">সাম্প্রতিক অর্ডারসমূহ</h2>
+          {orders.length > 0 ? (
+            <div className="divide-y divide-gray-100">
+              {orders.map((order) => (
+                <div key={order.id} className="py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono font-bold text-sm text-gray-900">{order.id}</span>
+                      <span
+                        className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
+                          order.status === 'delivered'
+                            ? 'bg-emerald-100 text-emerald-800'
+                            : 'bg-amber-100 text-amber-800'
+                        }`}
+                      >
+                        {order.status}
+                      </span>
+                    </div>
+                    <p className="text-xs text-gray-500">
+                      তারিখ: {order.created_at} | পণ্য: {order.items.length} টি
+                    </p>
+                    <div className="text-xs font-bold text-red-600">
+                      মোট বিল: {settings.currency}{order.total.toLocaleString()}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => navigate('order_track', { orderId: order.id, phone: order.customer_phone })}
+                      className="bg-red-50 hover:bg-red-100 text-red-600 text-xs font-bold px-3.5 py-2 rounded-xl transition-colors cursor-pointer"
+                    >
+                      ট্র্যাক করুন
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-10 text-gray-400 text-xs">কোনো অর্ডার পাওয়া যায়নি।</div>
+          )}
+        </div>
+      )}
+
+      {/* Digital Downloads Tab */}
+      {activeTab === 'downloads' && (
+        <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-xs space-y-4">
+          <h2 className="text-base font-extrabold text-gray-900">ডিজিটাল প্রডাক্ট ডাউনলোডস</h2>
+          {digitalOrders.length > 0 ? (
+            <div className="space-y-3">
+              {digitalOrders.map((order) =>
+                order.items
+                  .filter((i) => i.is_digital)
+                  .map((item, idx) => (
+                    <div
+                      key={idx}
+                      className="p-4 rounded-2xl bg-gray-50 border border-gray-100 flex items-center justify-between gap-4"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-purple-100 text-purple-600 flex items-center justify-center">
+                          <FileText className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <h4 className="text-xs font-bold text-gray-900">{item.product_name}</h4>
+                          <span className="text-[11px] text-gray-500 font-mono">
+                            ফাইল: {item.digital_file || 'activation_instructions.pdf'}
+                          </span>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => handleDownload(item.digital_file)}
+                        className="bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold px-3.5 py-2 rounded-xl flex items-center gap-1.5 shadow-xs transition-colors"
+                      >
+                        <Download className="w-3.5 h-3.5" />
+                        <span>ডাউনলোড</span>
+                      </button>
+                    </div>
+                  ))
+              )}
+            </div>
+          ) : (
+            <div className="text-center py-10 text-gray-400 text-xs">
+              আপনার একাউন্টে কোনো ডিজিটাল ফাইল বা সফটওয়্যার লাইসেন্স নেই।
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Wishlist Tab */}
+      {activeTab === 'wishlist' && (
+        <div className="space-y-4">
+          <h2 className="text-base font-extrabold text-gray-900">আপনার সংরক্ষিত উইশলিস্ট</h2>
+          {wishlistedProducts.length > 0 ? (
+            <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              {wishlistedProducts.map((prod) => (
+                <ProductCard key={prod.id} product={prod} />
+              ))}
+            </div>
+          ) : (
+            <div className="bg-white rounded-3xl p-12 text-center text-gray-500 border border-gray-100 space-y-3">
+              <Heart className="w-12 h-12 text-gray-300 mx-auto" />
+              <p className="text-sm font-bold">আপনার উইশলিস্ট খালি!</p>
+              <button
+                onClick={() => navigate('home')}
+                className="bg-red-600 text-white text-xs font-bold px-4 py-2 rounded-xl"
+              >
+                পণ্য পছন্দ করুন
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Refund Request Tab */}
+      {activeTab === 'refund' && (
+        <div className="bg-white rounded-3xl p-6 sm:p-8 border border-gray-100 shadow-xs max-w-xl mx-auto space-y-5">
+          <div className="text-center space-y-1">
+            <h2 className="text-lg font-extrabold text-gray-950">রিটার্ন ও রিফান্ড আবেদন</h2>
+            <p className="text-xs text-gray-500">
+              পণ্যে কোনো ত্রুটি বা সমস্যা থাকলে ডেলিভারির ৩ দিনের মধ্যে আবেদন করুন
+            </p>
+          </div>
+
+          {!refundSubmitted ? (
+            <form onSubmit={handleRefundSubmit} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">অর্ডার আইডি *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="যেমন: ORD-9841"
+                  value={refundOrderId}
+                  onChange={(e) => setRefundOrderId(e.target.value)}
+                  className="w-full bg-gray-50 text-xs rounded-xl px-3.5 py-2.5 border border-gray-200 uppercase font-mono outline-hidden focus:border-red-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">সমস্যার বিবরণ *</label>
+                <textarea
+                  rows={3}
+                  required
+                  placeholder="পণ্যের কি সমস্যা বা কেন ফেরত দিতে চাচ্ছেন বিস্তারিত লিখুন..."
+                  value={refundReason}
+                  onChange={(e) => setRefundReason(e.target.value)}
+                  className="w-full bg-gray-50 text-xs rounded-xl px-3.5 py-2.5 border border-gray-200 outline-hidden focus:border-red-500 resize-none"
+                />
+              </div>
+
+              <button
+                type="submit"
+                className="w-full bg-gray-900 hover:bg-black text-white text-xs font-bold py-3 rounded-xl shadow-sm"
+              >
+                আবেদন জমা দিন
+              </button>
+            </form>
+          ) : (
+            <div className="p-5 bg-emerald-50 rounded-2xl border border-emerald-200 text-center space-y-2">
+              <CheckCircle2 className="w-8 h-8 text-emerald-600 mx-auto" />
+              <p className="text-xs font-bold text-emerald-950">
+                আপনার আবেদনটি গ্রহণ করা হয়েছে।
+              </p>
+              <p className="text-[11px] text-emerald-800">
+                আমাদের রিটার্ন এক্সিকিউটিভ ২৪ ঘন্টার মধ্যে আপনার সাথে ফোনে যোগাযোগ করবে।
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
