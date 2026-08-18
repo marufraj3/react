@@ -1,0 +1,62 @@
+# =============================================================================
+# Shop Genie — local end-to-end test stack (MySQL + PHP 8.2 Laravel app)
+#
+# Usage (from the backend/ directory):
+#   docker compose up -d --build
+#   # app: http://localhost:8000  (admin: http://localhost:8000/admin)
+#   # the entrypoint auto-installs deps, sets APP_KEY, migrates & seeds
+#   docker compose down          # stop
+#   docker compose down -v       # stop + wipe the database volume
+# =============================================================================
+services:
+  mysql:
+    image: mysql:8.0
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: shopgenie
+      MYSQL_USER: shopgenie
+      MYSQL_PASSWORD: secret
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-proot"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  app:
+    build:
+      context: .
+      dockerfile: docker/8.2/Dockerfile
+      args:
+        WWWGROUP: "1000"
+    restart: unless-stopped
+    ports:
+      - "8000:80"
+    environment:
+      APP_ENV: local
+      APP_DEBUG: "true"
+      APP_KEY: ""
+      APP_URL: http://localhost:8000
+      DB_CONNECTION: mysql
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_DATABASE: shopgenie
+      DB_USERNAME: shopgenie
+      DB_PASSWORD: secret
+      CACHE_DRIVER: file
+      SESSION_DRIVER: file
+      QUEUE_CONNECTION: sync
+      FILESYSTEM_DISK: local
+    volumes:
+      - ".:/var/www/html"
+    depends_on:
+      mysql:
+        condition: service_healthy
+    entrypoint: ["bash", "/var/www/html/docker/entrypoint.sh"]
+
+volumes:
+  mysql_data:

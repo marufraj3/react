@@ -66,14 +66,13 @@ export const CustomerAccountPage: React.FC<CustomerAccountPageProps> = ({ initia
 
     // API mode: submit a real refund request to the Laravel backend.
     if (isAuthenticated) {
-      const orderIdNum = Number(refundOrderId.trim());
       if (!refundOrderId.trim() || !refundReason.trim() || !refundAccount.trim()) {
         setRefundError('অর্ডার আইডি, সমস্যার বিবরণ ও রিফান্ড অ্যাকাউন্ট দিন।');
         return;
       }
       setRefundSubmitting(true);
       const res = await submitRefund({
-        order_id: orderIdNum,
+        order_id: refundOrderId.trim(),
         reason: refundReason.trim(),
         refund_method: refundMethod,
         refund_account: refundAccount.trim(),
@@ -577,7 +576,7 @@ export const CustomerAccountPage: React.FC<CustomerAccountPageProps> = ({ initia
                       <input
                         type="text"
                         required
-                        placeholder="যেমন: 9841 (ইনভয়েস নম্বর)"
+                        placeholder="যেমন: ORD-9841 (অর্ডার আইডি)"
                         value={refundOrderId}
                         onChange={(e) => setRefundOrderId(e.target.value)}
                         className="w-full bg-gray-50 text-xs rounded-xl px-3.5 py-2.5 border border-gray-200 font-mono outline-hidden focus:border-red-500"

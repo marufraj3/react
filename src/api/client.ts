@@ -228,7 +228,7 @@ export async function myRefundsApi(token: string): Promise<RefundItem[]> {
 export async function submitRefundApi(
   token: string,
   payload: {
-    order_id: number;
+    order_id: string | number;
     reason: string;
     refund_method: string;
     refund_account: string;

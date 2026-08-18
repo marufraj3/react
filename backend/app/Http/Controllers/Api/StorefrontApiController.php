@@ -66,6 +66,25 @@ class StorefrontApiController extends Controller
         return $default;
     }
 
+    /**
+     * Turn a stored image path (e.g. "public/uploads/x.jpg" or an absolute URL)
+     * into an absolute, browser-friendly URL.
+     */
+    private function absUrl(?string $path): ?string
+    {
+        if (! $path) {
+            return null;
+        }
+
+        $path = trim($path);
+
+        if (preg_match('#^https?://#i', $path)) {
+            return $path;
+        }
+
+        return rtrim(url('/'), '/').'/'.ltrim($path, '/');
+    }
+
     private function json($data, int $status = 200, string $message = 'ok')
     {
         return response()->json([
@@ -80,23 +99,28 @@ class StorefrontApiController extends Controller
         $s = GeneralSetting::orderBy('id', 'desc')->first();
         $p = fn (...$keys) => $this->pick($s, $keys);
 
+        // Contact info (hotline, email, address, whatsapp) lives in the
+        // `contacts` table, not in general_settings.
+        $contact = \App\Models\Contact::where('status', 1)->first();
+
         return [
             'name'               => $p('name', 'shop_name', 'site_name', 'title') ?? 'Shop Genie',
-            'white_logo'         => $p('white_logo'),
-            'dark_logo'          => $p('dark_logo'),
-            'favicon'            => $p('favicon'),
-            'hotline'            => $p('hotline', 'mobile', 'phone', 'hotline_number'),
-            'email'              => $p('email', 'email_address'),
-            'address'            => $p('address', 'shop_address'),
+            'white_logo'         => $this->absUrl($p('white_logo')),
+            'dark_logo'          => $this->absUrl($p('dark_logo')),
+            'favicon'            => $this->absUrl($p('favicon')),
+            'hotline'            => $this->pick($contact, ['hotline', 'phone']),
+            'email'              => $this->pick($contact, ['email', 'hotmail']),
+            'address'            => $this->pick($contact, ['address']),
             'top_headline'       => $p('top_headline', 'headline'),
             'news_ticker_enabled'=> (bool) $p('news_ticker_enabled', 0),
             'checkout_note'      => $p('checkout_note'),
             'order_policy'       => $p('order_policy', 'policy'),
             'primary_color'      => $p('primary_color', 'theme_color') ?? '#111827',
-            'secondary_color'    => $p('secondary_color') ?? '#dc2626',
+            // Note: the production DB stores this as `secodery_color` (typo).
+            'secondary_color'    => $p('secondary_color', 'secodery_color') ?? '#dc2626',
             'footer_about_text'  => $p('footer_about_text', 'footer_text'),
-            'facebook_page'      => $p('facebook_page', 'facebook', 'facebook_link'),
-            'whatsapp_number'    => $p('whatsapp_number', 'whatsapp'),
+            'facebook_page'      => $p('facebook_page', 'facebook', 'facebook_link', 'facebook_page_username'),
+            'whatsapp_number'    => $this->pick($contact, ['whatsapp']),
             'youtube_link'       => $p('youtube_link', 'youtube'),
             'tiktok_link'        => $p('tiktok_link', 'tiktok'),
             'instagram_link'     => $p('instagram_link', 'instagram'),
@@ -112,7 +136,7 @@ class StorefrontApiController extends Controller
             'id'            => (int) $c->id,
             'name'          => $c->name,
             'slug'          => $c->slug,
-            'image'         => $c->image ?? null,
+            'image'         => $this->absUrl($c->image ?? null),
             'icon'          => $c->icon ?? null,
             'front_view'    => $c->front_view ?? null,
             'status'        => (int) ($c->status ?? 1),
@@ -138,7 +162,7 @@ class StorefrontApiController extends Controller
             'category_id' => (int) ($b->category_id ?? 0),
             'title'       => $this->pick($b, ['title', 'headline']),
             'subtitle'    => $this->pick($b, ['subtitle', 'sub_title']),
-            'image'       => $b->image,
+            'image'       => $this->absUrl($b->image ?? null),
             'link'        => $b->link ?? null,
             'status'      => (int) ($b->status ?? 1),
             // Laravel banners use category_id==1 for the hero slider.
@@ -205,8 +229,8 @@ class StorefrontApiController extends Controller
             'pro_unit'            => $g('pro_unit', 'unit'),
             'pro_video'           => $g('pro_video', 'pro_video_path'),
             'description'         => $g('description') ?? '',
-            'image'               => $image,
-            'gallery'             => array_values($gallery),
+            'image'               => $this->absUrl($image),
+            'gallery'             => array_values(array_map(fn ($p) => $this->absUrl($p), $gallery)),
             'colors'              => array_values($colors),
             'sizes'               => array_values($sizes),
             'topsale'             => (bool) $g('topsale', 0),
@@ -354,7 +378,7 @@ class StorefrontApiController extends Controller
                 'slug'              => $b->slug,
                 'short_description' => $b->short_description ?? null,
                 'description'       => $b->description ?? null,
-                'image'             => $b->image ?? null,
+                'image'             => $this->absUrl($b->image ?? null),
                 'views'             => (int) ($b->views ?? 0),
                 'status'            => 1,
                 'created_at'        => $b->created_at ? (string) $b->created_at : null,
@@ -949,7 +973,7 @@ class StorefrontApiController extends Controller
         }
 
         $request->validate([
-            'order_id'   => 'required|integer|exists:orders,id',
+            'order_id'   => 'required|string|max:40',
             'reason'     => 'required|string|max:1000',
             'refund_method' => 'required|in:original_payment,bkash,nagad,bank,manual',
             'refund_account' => 'required|string|max:255',
@@ -957,9 +981,16 @@ class StorefrontApiController extends Controller
             'shipping_charge' => 'nullable|numeric|min:0',
         ]);
 
-        $order = Order::where('id', (int) $request->input('order_id'))
-            ->where('customer_id', $customer->id)
-            ->first();
+        // Accept either the numeric order id or the customer-facing "ORD-12345"
+        // invoice reference (the storefront only ever shows the invoice id).
+        $orderRef = trim((string) $request->input('order_id'));
+        $order = null;
+
+        if (preg_match('/^ORD-(\d+)$/i', $orderRef, $m)) {
+            $order = Order::where('invoice_id', $m[1])->where('customer_id', $customer->id)->first();
+        } elseif (is_numeric($orderRef)) {
+            $order = Order::where('id', (int) $orderRef)->where('customer_id', $customer->id)->first();
+        }
 
         if (! $order) {
             return $this->json(null, 404, 'অর্ডারটি খুঁজে পাওয়া যায়নি।');
@@ -1079,7 +1110,7 @@ class StorefrontApiController extends Controller
                 'slug'              => $b->slug,
                 'short_description' => $b->short_description ?? null,
                 'description'       => $b->description ?? null,
-                'image'             => $b->image ?? null,
+                'image'             => $this->absUrl($b->image ?? null),
                 'views'             => (int) ($b->views ?? 0),
                 'status'            => 1,
                 'created_at'        => $b->created_at ? (string) $b->created_at : null,
@@ -1104,7 +1135,7 @@ class StorefrontApiController extends Controller
             'slug'              => $blog->slug,
             'short_description' => $blog->short_description ?? null,
             'description'       => $blog->description ?? null,
-            'image'             => $blog->image ?? null,
+            'image'             => $this->absUrl($blog->image ?? null),
             'views'             => (int) ($blog->views ?? 0),
             'status'            => 1,
             'created_at'        => $blog->created_at ? (string) $blog->created_at : null,

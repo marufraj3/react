@@ -1,5 +1,8 @@
 # 🚀 Deployment Guide — Shop Genie (React storefront + Laravel backend)
 
+> 🧪 **Want to test before deploying?** See `TESTING.md` for the one-command
+> Docker stack and the scripted end-to-end API smoke test.
+
 This project ships as two parts in one repo:
 
 | Part | Path | Tech |

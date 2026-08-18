@@ -155,7 +155,7 @@ interface StoreContextType {
   refreshMyOrders: () => Promise<void>;
   refreshDownloads: () => Promise<void>;
   refreshRefunds: () => Promise<void>;
-  submitRefund: (data: { order_id: number; reason: string; refund_method: string; refund_account: string; refund_account_name?: string; amount?: number; shipping_charge?: number }) => Promise<{ success: boolean; message: string; refundId?: string }>;
+  submitRefund: (data: { order_id: string | number; reason: string; refund_method: string; refund_account: string; refund_account_name?: string; amount?: number; shipping_charge?: number }) => Promise<{ success: boolean; message: string; refundId?: string }>;
   updateProfile: (data: { name: string; phone: string; email?: string; address?: string; district?: string; area?: string }) => Promise<{ success: boolean; message: string }>;
   changePassword: (data: { old_password: string; new_password: string; confirm_password: string }) => Promise<{ success: boolean; message: string }>;
 
@@ -703,7 +703,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   const submitRefund = async (data: {
-    order_id: number;
+    order_id: string | number;
     reason: string;
     refund_method: string;
     refund_account: string;

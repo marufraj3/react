@@ -188,8 +188,14 @@ VITE_API_URL=http://localhost:8000 VITE_BACKEND_PROXY=http://localhost:8000 npm 
 
 ## Deployment
 
-See **`backend/DEPLOYMENT.md`** for the full guide (shared cPanel + VPS):
+See **`backend/DEPLOYMENT.md`** for the full guide (shared cPanel + VPS) and
+**`backend/TESTING.md`** for verification:
 
+- **One-command local test stack**: `docker-compose.yml` + `docker/entrypoint.sh`
+  (MySQL 8 + PHP 8.2, auto composer install / migrate / seed).
+- **`DemoDataSeeder`** — seeds settings, contacts, shipping, categories,
+  products, banner, coupon so a fresh DB is instantly testable.
+- **`smoke-test.sh`** — scripted end-to-end test of all 18 storefront endpoints.
 - Shared-hosting layout is already in place: `index.php` + root `.htaccess`
   (document root = app root), with sensitive-file protection added.
 - `backend/.env.production.example` — production env template
@@ -198,3 +204,12 @@ See **`backend/DEPLOYMENT.md`** for the full guide (shared cPanel + VPS):
   storage link, optimize, optional React build copy).
 - Added `jobs` table migration (for the database queue) and a
   `storage/app/private/.gitkeep` so the digital-download disk exists on clone.
+
+### Production-correctness fixes made during this pass
+- `settingsPayload()` now reads hotline/email/address/whatsapp from the
+  `contacts` table and maps the `secodery_color` (typo) + `facebook_page_username`
+  columns correctly.
+- All image URLs (products, gallery, categories, banners, blogs, logos) are
+  prefixed with the app base URL so stored `public/uploads/...` paths render.
+- `POST /refunds` accepts either the numeric order id **or** the customer-facing
+  `ORD-12345` invoice reference.
