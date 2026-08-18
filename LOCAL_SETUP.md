@@ -1,167 +1,162 @@
-# 💻 আপনার PC-তে Localhost-এ Test করার নিয়ম
+# 💻 আপনার PC-তে Localhost-এ Test করার নিয়ম (Docker ছাড়া)
 
-এই প্রজেক্টের **২টা অংশ**:
+Docker **লাগবে না**। নিচে সহজ থেকে কঠিন — **৪টা উপায়**। আপনি যেটা চান সেটা বেছে নিন।
 
-| অংশ | Folder | কী চালায় |
+| উপায় | কী লাগবে | কী দেখতে পাবেন |
 |---|---|---|
-| React storefront (দোকানের সামনের অংশ) | `/` (root) | Node.js + Vite |
-| Laravel backend + Admin panel | `/backend` | PHP 8.2 + MySQL |
-
-দুটো আলাদা সার্ভারে চলে:
-- React → `http://localhost:3000`
-- Laravel → `http://localhost:8000`
-
-React Laravel-এর API-কে call করে। নিচে **দুটো উপায়** দেওয়া হলো — আপনার PC-তে যা আছে সেটা বেছে নিন।
+| **A. শুধু storefront (সবচেয়ে সহজ)** | শুধু Node.js | দোকানের ডিজাইন + demo data |
+| **B. Laragon (full stack, recommended)** | Laragon (১টা installer) | সত্যিকারের backend + admin + ডেটাবেস |
+| C. Docker | Docker Desktop | full stack |
+| D. XAMPP | XAMPP | full stack |
 
 ---
 
-## 🐳 Option A: Docker (সবচেয়ে সহজ — recommended)
+## ✅ A. সবচেয়ে সহজ — শুধু storefront দেখুন (backend লাগে না)
 
-শুধু **Docker Desktop** install থাকলেই হবে (PHP/MySQL/Composer আলাদা লাগবে না)।
+PHP, MySQL, Composer, Docker — **কিছুই লাগবে না**। শুধু **Node.js LTS** install করুন → https://nodejs.org
 
-### ধাপ ১: Backend চালু করুন
+```bash
+# repo root-এ (react ফোল্ডারে)
+npm install
+npm run dev
+```
+খুলুন → **http://localhost:3000**
+
+এটাই পুরো দোকানের ডিজাইন + সব পেজ + demo data (cart, order, admin preview সব কাজ করে — localStorage-এ থাকে)।
+
+> ⚠️ এতে **আসল ডেটাবেস/backend চলে না** — এটা design preview + demo mode।
+
+---
+
+## ✅ B. Full stack — Laragon দিয়ে (recommended, Docker লাগে না)
+
+**Laragon** একটা free installer — একসাথে **PHP + MySQL + Apache + Composer + HeidiSQL** install করে দেয়। XAMPP-এর চেয়ে অনেক সহজ।
+
+### ধাপ ১: Laragon install
+1. Download → https://laragon.org/download (Full version)
+2. Install → Start **Laragon** → **"Start All"** চাপুন (সবুজ হয়ে যাবে)
+
+### ধাপ ২: Project ফোল্ডার রাখুন
+- Repo-টা clone করুন (বা zip নামিয়ে) `C:\laragon\www\` এর ভেতরে:
+  ```
+  C:\laragon\www\react\   ← পুরো repo এখানে
+  ```
+  (আগেই repo-টা `marufraj3/react` থেকে GitHub Desktop / `git clone` দিয়ে নামান)
+
+### ধাপ ৩: Backend সেটআপ (এক কমান্ড!)
+1. Laragon-এর tray icon-এ **right-click → Terminal** খুলুন
+2. লিখুন:
+   ```bash
+   cd C:\laragon\www\react\backend
+   setup-local.bat
+   ```
+   এটি নিজে থেকে: `composer install` → `.env` বানায় → `key:generate` → **`shopgenie` ডেটাবেস বানায়** → migrate + demo data seed করে।
+
+   > (Terminal-এ `.bat` না চাইলে ম্যানুয়ালি: `composer install` → `copy .env.example .env` → `php artisan key:generate` → `php artisan migrate --seed`)
+
+### ধাপ ৪: Backend চালু করুন
+```bash
+start-local.bat
+```
+→ **http://localhost:8000** (admin: **http://localhost:8000/admin**)
+
+**Admin login:** `admin@gmail.com` / `123456`
+
+### ধাপ ৫: React storefront চালান (নতুন terminal)
+```bash
+cd C:\laragon\www\react
+npm install
+```
+root-এ `.env` ফাইল বানান (নোটপ্যাডে):
+```
+VITE_API_URL=http://localhost:8000
+VITE_BACKEND_PROXY=http://localhost:8000
+```
+```bash
+npm run dev
+```
+→ **http://localhost:3000** — storefront এখন **আসল backend + ডেটাবেস**-এ চলছে। ✅
+
+### ধাপ ৬ (ঐচ্ছিক): Auto test
+Laragon Terminal-এ:
+```bash
+cd C:\laragon\www\react\backend
+bash smoke-test.sh
+```
+> Windows-এ `bash` না থাকলে Git Bash বা WSL দিয়ে চালান; বা ধাপ ৩-৫ ম্যানুয়ালি test করুন।
+
+---
+
+## C. Docker দিয়ে (যদি কখনও install করেন)
+
 ```bash
 cd backend
 docker compose up -d --build
 ```
-প্রথমবার বিল্ড হতে ৩-৫ মিনিট লাগতে পারে। নিজে থেকেই:
-- MySQL 8 চালু করে
-- `composer install` করে
-- `APP_KEY` generate করে
-- database migrate + **demo data seed** করে
-
-তারপর ব্রাউজারে খুলুন:
-| URL | কী |
-|---|---|
-| http://localhost:8000 | Laravel backend |
-| http://localhost:8000/api/v1/storefront/bootstrap | Storefront API (JSON দেখাবে) |
-| http://localhost:8000/admin | Admin panel |
-
-**Admin login:** `admin@gmail.com` / `123456`
-
-### ধাপ ২: React storefront চালু করুন (নতুন terminal)
-```bash
-cd ..                # repo root-এ ফিরে আসুন
-npm install
-```
-তারপর `.env` ফাইল বানান (root-এ):
-```bash
-VITE_API_URL=http://localhost:8000
-VITE_BACKEND_PROXY=http://localhost:8000
-```
-এখন চালান:
-```bash
-npm run dev
-```
-খুলুন → http://localhost:3000 — storefront এখন **সত্যিকারের Laravel backend**-এ চলছে (লগইন, অর্ডার, পেমেন্ট, ডাউনলোড, রিফান্ড — সব persistent)।
-
-> ⚠️ **শুধু design preview দেখতে** `.env` বাদ দিয়ে `npm run dev` চালালেই হবে (demo data + localStorage mode)।
-
-### ধাপ ৩ (ঐচ্ছিক): Auto end-to-end test
-```bash
-cd backend
-bash smoke-test.sh              # ১৮টা API endpoint auto test করবে
-```
-
-### বন্ধ / মুছতে
-```bash
-docker compose down             # বন্ধ (ডেটা থাকবে)
-docker compose down -v          # বন্ধ + ডেটাবেস মুছে ফেলবে
-```
+তারপর `npm install` + `.env` set করে `npm run dev`।
 
 ---
 
-## 🖥️ Option B: Manual (XAMPP / Laragon / LAMP)
+## D. XAMPP দিয়ে
 
-আপনার PC-তে থাকতে হবে: **PHP 8.2+**, **Composer**, **MySQL**, **Node.js 18+**।
+1. **XAMPP** install → https://www.apachefriends.org
+2. XAMPP Control Panel → **MySQL** + **Apache** Start করুন
+3. Repo-টা `C:\xampp\htdocs\react\` এ রাখুন
+4. phpMyAdmin খুলে (http://localhost/phpmyadmin) **`shopgenie`** নামে database বানান
+5. `backend/` ফোল্ডারে terminal খুলে:
+   ```bash
+   composer install
+   copy .env.example .env
+   php artisan key:generate
+   php artisan migrate --seed
+   php artisan serve --host=0.0.0.0 --port=8000
+   ```
+6. React: root-এ `.env` set করে `npm install && npm run dev`
 
-### ধাপ ১: Backend সেটআপ
-```bash
-cd backend
-composer install
-cp .env.example .env
-php artisan key:generate
-```
-`.env` ফাইলে DB বদলান:
-```env
-DB_CONNECTION=mysql
-DB_HOST=127.0.0.1
-DB_PORT=3306
-DB_DATABASE=shopgenie
-DB_USERNAME=root
-DB_PASSWORD=          # আপনার MySQL password
-```
-
-### ধাপ ২: Database তৈরি + migrate
-phpMyAdmin (বা CLI) দিয়ে `shopgenie` database বানান, তারপর:
-```bash
-php artisan migrate --seed
-```
-> এটি সব table + **demo data** (product, category, admin user) বানাবে।
-> চাইলে original data পেতে: `mysql -u root -p shopgenie < creativedesignbd_myshop1.sql`
-
-### ধাপ ৩: Backend চালান
-```bash
-php artisan serve --host=0.0.0.0 --port=8000
-```
-**Admin login:** `admin@gmail.com` / `123456`
-
-### ধাপ ৪: React storefront চালান
-```bash
-cd ..                 # repo root
-npm install
-```
-`.env` ফাইল (root-এ):
-```bash
-VITE_API_URL=http://localhost:8000
-VITE_BACKEND_PROXY=http://localhost:8000
-```
-```bash
-npm run dev           # → http://localhost:3000
-```
-
-### (XAMPP/Laragon-এ Apache দিয়ে চালাতে চাইলে)
-- `backend/` ফোল্ডারটা `htdocs`/`www`-এ copy করুন (document root = app root, কারণ `index.php` root-এ আছে)
-- Apache-এ rewrite enable করুন, তারপর → `http://localhost/backend/`
+> XAMPP-তে PHP/Composer **PATH-তে থাকে না** — `setup-local.bat` চলবে না, ম্যানুয়াল কমান্ড দিন (XAMPP-এর shell বাটনে click করে)।
 
 ---
 
-## 🔌 React ↔ Laravel কানেকশন (মনে রাখুন)
+## 🔌 React ↔ Laravel কানেকশন
 
 | Setting | কোথায় | মান |
 |---|---|---|
-| `VITE_API_URL` | React-এর `.env` | Laravel-এর base URL (`http://localhost:8000`) |
-| `VITE_BACKEND_PROXY` | React-এর `.env` | dev-এ `/api` proxy কোথায় যাবে (CORS এড়ায়) |
-| `STORE_URL` | Laravel-এর `.env` | পেমেন্ট callback কোথায় ফিরবে (React URL, প্রোডাকশনে দরকার) |
+| `VITE_API_URL` | React-এর `.env` | `http://localhost:8000` |
+| `VITE_BACKEND_PROXY` | React-এর `.env` | `http://localhost:8000` |
+| `STORE_URL` | Laravel-এর `.env` | React URL (প্রোডাকশনে দরকার) |
 
-> **VITE_API_URL খালি থাকলে** React **demo mode**-এ চলে (localStorage data) — কোনো backend লাগে না।
+> **VITE_API_URL না দিলে** React demo mode-এ চলে (backend লাগে না)।
 
 ---
 
-## ❗ Common সমস্যা ও সমাধান
+## ❗ Common সমস্যা
 
-| সমস্যা | কারণ / সমাধান |
+| সমস্যা | সমাধান |
 |---|---|
-| `vite: not found` | `npm install` চালাননি — root-এ `npm install` দিন |
-| `bootstrap` 500 error | `backend/storage/logs/laravel.log` দেখুন; `.env` বদলে থাকলে `php artisan config:clear` চালান |
-| লগইন 422 | ফোন নম্বর আগে register করা লাগবে (My Account → লগইন/রেজিস্টার) |
-| ছবি ভাঙা | `APP_URL` সঠিক base URL দিন (http://localhost:8000) |
-| পেমেন্ট callback Blade page-এ যায় | `STORE_URL` Laravel `.env`-এ set করুন |
-| Docker build fail (COPY) | repo latest pull করুন — build context fix করা আছে |
-| Linux-এ `vendor` root-owned | `sudo chown -R $USER:$USER backend/vendor` চালান |
+| `vite: not found` | root-এ `npm install` চালান |
+| `php not recognized` | Laragon/XAMPP-এর terminal ব্যবহার করুন, বা PHP PATH-এ add করুন |
+| `Access denied for user root` | Laragon/XAMPP-এ MySQL root-এর password খালি থাকে; `.env`-এ `DB_PASSWORD=` (খালি) রাখুন |
+| ডেটাবেস `shopgenie` নেই | HeidiSQL/phpMyAdmin-এ manually `shopgenie` database বানান |
+| লগইন 422 | আগে register করুন (My Account → লগইন/রেজিস্টার) |
+| ছবি ভাঙা | `.env`-এ `APP_URL=http://localhost:8000` দিন |
 
 ---
 
-## 🎯 সংক্ষিপ্ত quick start (Docker)
+## 🎯 সবচেয়ে দ্রুত summary
 
+**শুধু দেখতে চাইলে:**
 ```bash
-# terminal 1
-cd backend && docker compose up -d --build
-
-# terminal 2
-npm install
-echo "VITE_API_URL=http://localhost:8000
-VITE_BACKEND_PROXY=http://localhost:8000" > .env
-npm run dev
+npm install && npm run dev        # → http://localhost:3000
 ```
-তারপর: storefront → http://localhost:3000, admin → http://localhost:8000/admin (admin@gmail.com / 123456)
+
+**আসল backend সহ (Laragon install করার পর):**
+```bash
+cd C:\laragon\www\react\backend
+setup-local.bat
+start-local.bat                   # → http://localhost:8000/admin
+
+cd C:\laragon\www\react
+npm install
+# .env: VITE_API_URL=http://localhost:8000
+npm run dev                       # → http://localhost:3000
+```
