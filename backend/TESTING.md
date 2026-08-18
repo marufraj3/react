@@ -1,5 +1,8 @@
 # 🧪 Testing & Verification — Shop Genie
 
+> 💻 **আপনার PC-তে localhost-এ test করার step-by-step বাংলা গাইড**
+> দেখুন → **`../LOCAL_SETUP.md`** (Docker + Manual দুটো উপায়ই আছে)।
+
 Two ways to verify the full stack before (and after) going live:
 
 1. **Local Docker stack** — one command, no PHP/MySQL install needed.

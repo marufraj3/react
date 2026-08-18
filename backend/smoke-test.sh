@@ -7,7 +7,7 @@
 #   bash smoke-test.sh https://api.example.com  # against a deployed server
 #
 # Exercises every storefront endpoint in order (bootstrap → order → auth →
-# refund). Requires `curl` and `jq` (jq optional — used only for pretty output).
+# refund). Requires `curl` and `jq`.
 # =============================================================================
 set -uo pipefail
 
@@ -35,16 +35,23 @@ echo "========================================================"
 echo " Smoke testing: $BASE/api/v1/storefront"
 echo "========================================================"
 
+if ! command -v jq >/dev/null 2>&1; then
+  echo ""
+  echo "  ❌ 'jq' is required for the smoke test."
+  echo "     Install it first:"
+  echo "       macOS:  brew install jq"
+  echo "       Debian/Ubuntu: sudo apt-get install -y jq"
+  echo "       Windows: winget install jqlang.jq   (or use WSL)"
+  echo ""
+  exit 2
+fi
+
 # ---- 1. Bootstrap -----------------------------------------------------
 echo "› bootstrap"
 request GET /bootstrap
 [ "$CODE" = 200 ] && ok "bootstrap 200" || fail "bootstrap ($CODE)"
-PRODUCT_ID=$(printf '%s' "$RESP" | sed -n 's/.*"id":\([0-9]*\).*/\1/p' | head -1)
-# extract first product id via jq if available, else via grep fallback
-if command -v jq >/dev/null 2>&1; then
-  PRODUCT_ID=$(printf '%s' "$RESP" | jq -r '.data.products[0].id // empty' 2>/dev/null)
-  PRODUCT_SLUG=$(printf '%s' "$RESP" | jq -r '.data.products[0].slug // empty' 2>/dev/null)
-fi
+PRODUCT_ID=$(printf '%s' "$RESP" | jq -r '.data.products[0].id // empty' 2>/dev/null)
+PRODUCT_SLUG=$(printf '%s' "$RESP" | jq -r '.data.products[0].slug // empty' 2>/dev/null)
 [ -n "$PRODUCT_ID" ] && ok "found product id=$PRODUCT_ID" || fail "no product in bootstrap"
 
 # ---- 2. Products list --------------------------------------------------
@@ -77,7 +84,7 @@ PHONE="018$(date +%s | tail -c 9)"
 echo "› register ($PHONE)"
 request POST /auth/register "{\"name\":\"Smoke Tester\",\"phone\":\"$PHONE\",\"password\":\"secret123\"}"
 [ "$CODE" = 201 ] && ok "register 201" || fail "register ($CODE)"
-TOKEN=$(printf '%s' "$RESP" | sed -n 's/.*"token":"\([^"]*\)".*/\1/p')
+TOKEN=$(printf '%s' "$RESP" | jq -r '.data.token // empty')
 [ -n "$TOKEN" ] && ok "token issued" || fail "no token in register response"
 
 # ---- 8. Me ----------------------------------------------------------------
@@ -90,7 +97,7 @@ echo "› create order (COD)"
 ORDER_BODY="{\"name\":\"Smoke Tester\",\"phone\":\"$PHONE\",\"address\":\"Dhanmondi, Dhaka\",\"area\":1,\"payment_method\":\"cod\",\"items\":[{\"product_id\":${PRODUCT_ID},\"qty\":1,\"price\":2490}]}"
 request POST /orders "$ORDER_BODY"
 [ "$CODE" = 201 ] && ok "create order 201" || fail "create order ($CODE)"
-ORDER_ID=$(printf '%s' "$RESP" | sed -n 's/.*"order_id":"\([^"]*\)".*/\1/p')
+ORDER_ID=$(printf '%s' "$RESP" | jq -r '.data.order_id // empty')
 [ -n "$ORDER_ID" ] && ok "order id=$ORDER_ID" || fail "no order_id in response"
 
 # ---- 10. Track order --------------------------------------------------------

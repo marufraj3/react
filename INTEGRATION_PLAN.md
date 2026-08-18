@@ -188,6 +188,9 @@ VITE_API_URL=http://localhost:8000 VITE_BACKEND_PROXY=http://localhost:8000 npm 
 
 ## Deployment
 
+> 💻 **Localhost-এ নিজের PC-তে test করতে চান?** → **`LOCAL_SETUP.md`** (বাংলা,
+> Docker + Manual ধাপে ধাপে)।
+
 See **`backend/DEPLOYMENT.md`** for the full guide (shared cPanel + VPS) and
 **`backend/TESTING.md`** for verification:
 
