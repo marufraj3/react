@@ -237,3 +237,10 @@ export interface ContactMessage {
   created_at: string;
   is_read: boolean;
 }
+
+export interface AuthUser {
+  id: number;
+  name: string;
+  phone: string;
+  email?: string;
+}

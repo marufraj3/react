@@ -37,6 +37,13 @@ Route::prefix('v1/storefront')->group(function () {
     Route::post('orders', [StorefrontApiController::class, 'createOrder']);
     Route::get('orders/track/{invoice}', [StorefrontApiController::class, 'trackOrder']);
 
+    // Customer authentication (Sanctum bearer tokens)
+    Route::post('auth/register', [StorefrontApiController::class, 'register']);
+    Route::post('auth/login', [StorefrontApiController::class, 'login']);
+    Route::post('auth/logout', [StorefrontApiController::class, 'logout']);
+    Route::get('auth/me', [StorefrontApiController::class, 'me']);
+    Route::get('auth/orders', [StorefrontApiController::class, 'myOrders']);
+
     Route::post('reviews', [StorefrontApiController::class, 'submitReview']);
     Route::post('complaints', [StorefrontApiController::class, 'submitComplaint']);
     Route::post('contact', [StorefrontApiController::class, 'submitContact']);

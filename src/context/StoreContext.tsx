@@ -18,6 +18,7 @@ import {
   BlogPost,
   CustomerComplaint,
   ContactMessage,
+  AuthUser,
 } from '../types';
 import {
   initialSettings,
@@ -43,6 +44,11 @@ import {
   submitReviewApi,
   submitComplaintApi,
   submitContactApi,
+  registerApi,
+  loginApi,
+  logoutApi,
+  meApi,
+  myOrdersApi,
 } from '../api/client';
 
 export type ViewType =
@@ -67,6 +73,9 @@ export interface ToastNotification {
 }
 
 interface StoreContextType {
+  // API mode flag (true when VITE_API_URL is configured)
+  apiEnabled: boolean;
+
   // Store Data
   products: Product[];
   categories: Category[];
@@ -118,6 +127,20 @@ interface StoreContextType {
   // Wishlist
   wishlist: number[];
   toggleWishlist: (productId: number) => void;
+
+  // Customer Authentication
+  authUser: AuthUser | null;
+  authToken: string | null;
+  isAuthenticated: boolean;
+  myOrders: Order[];
+  authModalOpen: boolean;
+  authModalMode: 'login' | 'register';
+  openAuthModal: (mode?: 'login' | 'register') => void;
+  closeAuthModal: () => void;
+  login: (login: string, password: string) => Promise<{ success: boolean; message: string }>;
+  registerUser: (data: { name: string; phone: string; email?: string; password: string }) => Promise<{ success: boolean; message: string }>;
+  logout: () => Promise<void>;
+  refreshMyOrders: () => Promise<void>;
 
   // Order Operations
   lastCreatedOrder: Order | null;
@@ -271,6 +294,15 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   useEffect(() => setStoredItem('cart', cart), [cart]);
   useEffect(() => setStoredItem('wishlist', wishlist), [wishlist]);
+
+  // Customer authentication state (API mode)
+  const [authUser, setAuthUser] = useState<AuthUser | null>(() => getStoredItem('auth_user', null));
+  const [authToken, setAuthToken] = useState<string | null>(() => getStoredItem('auth_token', null));
+  const [myOrders, setMyOrders] = useState<Order[]>([]);
+  const [authModalOpen, setAuthModalOpen] = useState(false);
+  const [authModalMode, setAuthModalMode] = useState<'login' | 'register'>('login');
+
+  const isAuthenticated = API_ENABLED && authToken !== null && authUser !== null;
 
   // Toasts
   const [toasts, setToasts] = useState<ToastNotification[]>([]);
@@ -568,6 +600,107 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return found;
   };
 
+  // ---- Customer authentication (API mode only) --------------------------
+
+  const applyAuthSession = (token: string, user: AuthUser) => {
+    setAuthToken(token);
+    setAuthUser(user);
+    setStoredItem('auth_token', token);
+    setStoredItem('auth_user', user);
+  };
+
+  const refreshMyOrders = async (token?: string) => {
+    const t = token ?? authToken;
+    if (!t) return;
+    try {
+      const orders = await myOrdersApi(t);
+      setMyOrders(orders);
+    } catch {
+      // Ignore — session may have expired.
+    }
+  };
+
+  const login = async (login: string, password: string) => {
+    if (!API_ENABLED) {
+      return { success: false, message: 'API মোড চালু নেই।' };
+    }
+    try {
+      const res = await loginApi(login.trim(), password);
+      applyAuthSession(res.token, res.user);
+      await refreshMyOrders(res.token);
+      setAuthModalOpen(false);
+      showToast(`স্বাগতম, ${res.user.name}!`, 'success');
+      return { success: true, message: 'লগইন সফল হয়েছে!' };
+    } catch (err) {
+      return { success: false, message: err instanceof Error ? err.message : 'লগইন ব্যর্থ হয়েছে।' };
+    }
+  };
+
+  const registerUser = async (data: { name: string; phone: string; email?: string; password: string }) => {
+    if (!API_ENABLED) {
+      return { success: false, message: 'API মোড চালু নেই।' };
+    }
+    try {
+      const res = await registerApi(data);
+      applyAuthSession(res.token, res.user);
+      setAuthModalOpen(false);
+      showToast(`অ্যাকাউন্ট তৈরি হয়েছে — স্বাগতম, ${res.user.name}!`, 'success');
+      return { success: true, message: 'অ্যাকাউন্ট তৈরি হয়েছে!' };
+    } catch (err) {
+      return { success: false, message: err instanceof Error ? err.message : 'রেজিস্ট্রেশন ব্যর্থ হয়েছে।' };
+    }
+  };
+
+  const logout = async () => {
+    if (authToken) {
+      logoutApi(authToken).catch(() => {});
+    }
+    setAuthToken(null);
+    setAuthUser(null);
+    setMyOrders([]);
+    try {
+      localStorage.removeItem(LOCAL_STORAGE_KEY_PREFIX + 'auth_token');
+      localStorage.removeItem(LOCAL_STORAGE_KEY_PREFIX + 'auth_user');
+    } catch {
+      // ignore
+    }
+    showToast('লগআউট হয়েছে।', 'info');
+  };
+
+  const openAuthModal = (mode: 'login' | 'register' = 'login') => {
+    setAuthModalMode(mode);
+    setAuthModalOpen(true);
+  };
+
+  const closeAuthModal = () => setAuthModalOpen(false);
+
+  // Restore session on boot in API mode.
+  useEffect(() => {
+    if (!API_ENABLED || !authToken || authUser) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const user = await meApi(authToken);
+        if (!cancelled) {
+          setAuthUser(user);
+          setStoredItem('auth_user', user);
+          const orders = await myOrdersApi(authToken);
+          if (!cancelled) setMyOrders(orders);
+        }
+      } catch {
+        // Invalid/expired token — clear it.
+        if (!cancelled) {
+          setAuthToken(null);
+          setAuthUser(null);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [API_ENABLED, authToken]);
+
   // Admin Actions
   const updateOrderStatus = (orderId: string, status: OrderStatus, courierName?: string, trackingId?: string) => {
     setOrders((prev) =>
@@ -775,6 +908,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   return (
     <StoreContext.Provider
       value={{
+        apiEnabled: API_ENABLED,
         products,
         categories,
         subcategories,
@@ -817,6 +951,18 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         closeQuickOrder,
         wishlist,
         toggleWishlist,
+        authUser,
+        authToken,
+        isAuthenticated,
+        myOrders,
+        authModalOpen,
+        authModalMode,
+        openAuthModal,
+        closeAuthModal,
+        login,
+        registerUser,
+        logout,
+        refreshMyOrders,
         lastCreatedOrder,
         createOrder,
         trackOrder,

@@ -7,6 +7,7 @@
  */
 
 import type {
+  AuthUser,
   Banner,
   BlogPost,
   Category,
@@ -139,4 +140,63 @@ export async function submitContactApi(payload: {
   message: string;
 }): Promise<void> {
   await request('/contact', { method: 'POST', body: JSON.stringify(payload) });
+}
+
+/* ------------------------------------------------------------------ *
+ * Customer authentication
+ * ------------------------------------------------------------------ */
+
+export interface AuthResult {
+  token: string;
+  user: AuthUser;
+}
+
+export async function registerApi(payload: {
+  name: string;
+  phone: string;
+  email?: string;
+  password: string;
+}): Promise<AuthResult> {
+  return request<AuthResult>('/auth/register', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function loginApi(login: string, password: string): Promise<AuthResult> {
+  return request<AuthResult>('/auth/login', {
+    method: 'POST',
+    body: JSON.stringify({ login, password }),
+  });
+}
+
+export async function logoutApi(token: string): Promise<void> {
+  await request('/auth/logout', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+  });
+}
+
+export async function meApi(token: string): Promise<AuthUser> {
+  return request<AuthUser>('/auth/me', {
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+  });
+}
+
+export async function myOrdersApi(token: string): Promise<Order[]> {
+  return request<Order[]>('/auth/orders', {
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+  });
 }

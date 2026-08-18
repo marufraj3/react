@@ -60,6 +60,11 @@ Browser
 | POST | `/api/v1/storefront/coupons/apply` | validate coupon |
 | POST | `/api/v1/storefront/orders` | create order (restriction + stock + coupon + shipping logic) |
 | GET | `/api/v1/storefront/orders/track/{invoice}?phone=` | order tracking |
+| POST | `/api/v1/storefront/auth/register` | register customer (issues Sanctum token) |
+| POST | `/api/v1/storefront/auth/login` | login by phone/email (issues Sanctum token) |
+| POST | `/api/v1/storefront/auth/logout` | revoke bearer token |
+| GET | `/api/v1/storefront/auth/me` | authenticated customer profile |
+| GET | `/api/v1/storefront/auth/orders` | authenticated customer's order history |
 | POST | `/api/v1/storefront/reviews` | submit review |
 | POST | `/api/v1/storefront/complaints` | submit complaint |
 | POST | `/api/v1/storefront/contact` | contact message |
@@ -74,7 +79,13 @@ shape, so the React client stays thin.
 - `src/api/client.ts` — typed API client (activated by `VITE_API_URL`).
 - `src/context/StoreContext.tsx` — hydrates from `bootstrap` and forwards
   orders/reviews/complaints/contact/tracking to the API when enabled;
-  otherwise runs unchanged on localStorage.
+  otherwise runs unchanged on localStorage. Also holds customer auth state
+  (`authUser`, `authToken`, `myOrders`, `login`, `registerUser`, `logout`).
+- `src/components/storefront/AuthModal.tsx` — login/register modal.
+- `src/components/storefront/Header.tsx` — account menu now reflects the
+  logged-in state (login/register vs. orders/downloads/logout).
+- `src/components/storefront/CustomerAccountPage.tsx` — shows the real order
+  history in API mode (with a login prompt when signed out).
 - `src/components/storefront/OrderTrackingPage.tsx` — uses `trackOrderAsync`.
 - `vite.config.ts` — dev proxy for `/api`, `/uploads`, `/storage` →
   `VITE_BACKEND_PROXY` (default `http://localhost:8000`).
@@ -132,7 +143,7 @@ VITE_API_URL=http://localhost:8000 VITE_BACKEND_PROXY=http://localhost:8000 npm 
 
 1. **Wire payments**: return a gateway redirect URL from `POST /orders` for
    bKash/ShurjoPay/UddoktaPay/aamarPay and redirect the React checkout.
-2. **Auth**: add Sanctum login for the storefront "My Account" section
-   (currently demo/local).
+2. **Profile management**: let authenticated customers edit name/address and
+   change password (endpoints exist on the Blade side — mirror them in the API).
 3. **Migrate admin to React** screen-by-screen if you ever want a unified
    React admin (Blade admin already covers everything today).

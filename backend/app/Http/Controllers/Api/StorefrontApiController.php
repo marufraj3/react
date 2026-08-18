@@ -24,8 +24,10 @@ use App\Services\OrderRestrictionService;
 use App\Services\StockAlertService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use Laravel\Sanctum\PersonalAccessToken;
 
 /**
  * Storefront REST API (headless) for the React frontend.
@@ -221,6 +223,71 @@ class StorefrontApiController extends Controller
         return Product::query()
             ->where('status', 1)
             ->with(['images', 'colors', 'sizes']);
+    }
+
+    /* ------------------------------------------------------------------ *
+     * Order / Customer / Auth helpers
+     * ------------------------------------------------------------------ */
+
+    private function customerPayload(Customer $c): array
+    {
+        return [
+            'id'    => (int) $c->id,
+            'name'  => $c->name,
+            'phone' => $c->phone,
+            'email' => $c->email ?? null,
+        ];
+    }
+
+    private function orderPayload(Order $order): array
+    {
+        $statusMap = [
+            1 => 'pending', 2 => 'confirmed', 3 => 'processing',
+            4 => 'courier', 5 => 'delivered', 6 => 'cancelled', 7 => 'returned',
+        ];
+
+        $total = (float) $order->amount;
+        $discount = (float) ($order->discount ?? 0);
+        $shippingFee = (float) ($order->shipping_charge ?? 0);
+
+        return [
+            'id'                 => 'ORD-'.$order->invoice_id,
+            'customer_name'      => $order->shipping?->name ?? $order->customer?->name ?? null,
+            'customer_phone'     => $order->shipping?->phone ?? $order->customer?->phone ?? null,
+            'customer_address'   => $order->shipping?->address ?? $order->customer?->address ?? null,
+            'payment_method'     => $order->payment?->payment_method ?? 'cod',
+            'delivery_charge'    => $shippingFee,
+            'subtotal'           => round($total + $discount - $shippingFee, 2),
+            'discount'           => $discount,
+            'total'              => $total,
+            'status'             => $statusMap[(int) $order->order_status] ?? 'pending',
+            'courier_name'       => $order->courier_name ?? null,
+            'courier_tracking_id'=> $order->courier_tracking_id ?? null,
+            'created_at'         => $order->created_at ? (string) $order->created_at : null,
+            'items'              => $order->orderdetails->map(fn ($d) => [
+                'product_id'    => (int) $d->product_id,
+                'product_name'  => $d->product_name,
+                'price'         => (float) ($d->sale_price ?? 0),
+                'quantity'      => (int) $d->qty,
+                'color'         => $d->product_color ?? null,
+                'size'          => $d->product_size ?? null,
+            ])->values(),
+        ];
+    }
+
+    /** Resolve the Customer that owns the request's bearer token (if any). */
+    private function customerFromToken(Request $request): ?Customer
+    {
+        $bearer = $request->bearerToken();
+        if (! $bearer) {
+            return null;
+        }
+
+        $token = PersonalAccessToken::findToken($bearer);
+
+        return $token && $token->tokenable instanceof Customer
+            ? $token->tokenable
+            : null;
     }
 
     /* ------------------------------------------------------------------ *
@@ -597,7 +664,7 @@ class StorefrontApiController extends Controller
 
         $order = Order::where('invoice_id', $invoice)
             ->orWhere('id', is_numeric($invoice) ? (int) $invoice : 0)
-            ->with(['orderdetails', 'shipping'])
+            ->with(['orderdetails', 'shipping', 'customer', 'payment'])
             ->first();
 
         if (! $order) {
@@ -611,38 +678,115 @@ class StorefrontApiController extends Controller
             }
         }
 
-        $statusMap = [
-            1 => 'pending', 2 => 'confirmed', 3 => 'processing',
-            4 => 'courier', 5 => 'delivered', 6 => 'cancelled', 7 => 'returned',
-        ];
+        return $this->json($this->orderPayload($order));
+    }
 
-        $total = (float) $order->amount;
-        $discount = (float) ($order->discount ?? 0);
-        $shippingFee = (float) ($order->shipping_charge ?? 0);
+    /* ------------------------------------------------------------------ *
+     * Customer authentication (Sanctum bearer tokens)
+     * ------------------------------------------------------------------ */
+
+    /** POST /api/v1/storefront/auth/register */
+    public function register(Request $request)
+    {
+        $request->validate([
+            'name'     => 'required|string|max:191',
+            'phone'    => 'required|string|max:40|unique:customers,phone',
+            'email'    => 'nullable|email|max:191|unique:customers,email',
+            'password' => 'required|string|min:6',
+        ]);
+
+        $nextId = (int) (Customer::max('id') ?? 0) + 1;
+
+        $customer = new Customer();
+        $customer->name = $request->input('name');
+        $customer->slug = strtolower(Str::slug($request->input('name').'-'.$nextId));
+        $customer->phone = $request->input('phone');
+        $customer->email = $request->input('email');
+        $customer->password = Hash::make($request->input('password'));
+        $customer->verify = 1;
+        $customer->status = 'active';
+        $customer->save();
+
+        $token = $customer->createToken('storefront')->plainTextToken;
 
         return $this->json([
-            'id'               => 'ORD-'.$order->invoice_id,
-            'customer_name'    => $order->shipping?->name ?? null,
-            'customer_phone'   => $order->shipping?->phone ?? null,
-            'customer_address' => $order->shipping?->address ?? null,
-            'payment_method'   => $order->payment?->payment_method ?? 'cod',
-            'delivery_charge'  => $shippingFee,
-            'subtotal'         => round($total + $discount - $shippingFee, 2),
-            'discount'         => $discount,
-            'total'            => $total,
-            'status'           => $statusMap[(int) $order->order_status] ?? 'pending',
-            'courier_name'     => $order->courier_name ?? null,
-            'courier_tracking_id' => $order->courier_tracking_id ?? null,
-            'created_at'       => $order->created_at ? (string) $order->created_at : null,
-            'items'            => $order->orderdetails->map(fn ($d) => [
-                'product_id'    => (int) $d->product_id,
-                'product_name'  => $d->product_name,
-                'price'         => (float) ($d->sale_price ?? 0),
-                'quantity'      => (int) $d->qty,
-                'color'         => $d->product_color ?? null,
-                'size'          => $d->product_size ?? null,
-            ])->values(),
+            'token' => $token,
+            'user'  => $this->customerPayload($customer),
+        ], 201, 'অ্যাকাউন্ট তৈরি হয়েছে!');
+    }
+
+    /** POST /api/v1/storefront/auth/login */
+    public function login(Request $request)
+    {
+        $request->validate([
+            'login'    => 'required|string',
+            'password' => 'required|string',
         ]);
+
+        $login = trim((string) $request->input('login'));
+        $password = (string) $request->input('password');
+        $isPhone = preg_match('/^[0-9+]+$/', $login) === 1;
+
+        $customer = $isPhone
+            ? Customer::where('phone', $login)->first()
+            : Customer::where('email', $login)->first();
+
+        if (! $customer || ! Hash::check($password, $customer->password)) {
+            return $this->json(null, 422, 'ফোন নম্বর/ইমেইল অথবা পাসওয়ার্ড সঠিক নয়।');
+        }
+
+        if ($customer->status !== 'active') {
+            return $this->json(null, 403, 'এই অ্যাকাউন্টটি বর্তমানে নিষ্ক্রিয়।');
+        }
+
+        $token = $customer->createToken('storefront')->plainTextToken;
+
+        return $this->json([
+            'token' => $token,
+            'user'  => $this->customerPayload($customer),
+        ], 200, 'লগইন সফল হয়েছে!');
+    }
+
+    /** POST /api/v1/storefront/auth/logout */
+    public function logout(Request $request)
+    {
+        $bearer = $request->bearerToken();
+        if ($bearer) {
+            PersonalAccessToken::findToken($bearer)?->delete();
+        }
+
+        return $this->json(null, 200, 'লগআউট হয়েছে।');
+    }
+
+    /** GET /api/v1/storefront/auth/me */
+    public function me(Request $request)
+    {
+        $customer = $this->customerFromToken($request);
+
+        if (! $customer) {
+            return $this->json(null, 401, 'Unauthenticated.');
+        }
+
+        return $this->json($this->customerPayload($customer));
+    }
+
+    /** GET /api/v1/storefront/auth/orders */
+    public function myOrders(Request $request)
+    {
+        $customer = $this->customerFromToken($request);
+
+        if (! $customer) {
+            return $this->json(null, 401, 'Unauthenticated.');
+        }
+
+        $orders = Order::where('customer_id', $customer->id)
+            ->with(['orderdetails', 'shipping', 'customer', 'payment'])
+            ->orderBy('id', 'desc')
+            ->get()
+            ->map(fn ($o) => $this->orderPayload($o))
+            ->values();
+
+        return $this->json($orders);
     }
 
     /** POST /api/v1/storefront/reviews */

@@ -1,9 +1,9 @@
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
-import {defineConfig} from 'vite';
+import {defineConfig, type UserConfig} from 'vite';
 
-export default defineConfig(() => {
+export default defineConfig((): UserConfig => {
   return {
     plugins: [react(), tailwindcss()],
     resolve: {
@@ -18,7 +18,7 @@ export default defineConfig(() => {
       // Disable file watching when DISABLE_HMR is true to save CPU during agent edits.
       watch: process.env.DISABLE_HMR === 'true' ? null : {},
       // Allow the preview proxy host (e.g. *.e2b.app) to load the dev server.
-      allowedHosts: true,
+      allowedHosts: ['.e2b.app', 'localhost'],
       // Proxy API + uploaded media to the Laravel backend during local dev.
       proxy: process.env.VITE_BACKEND_PROXY
         ? {

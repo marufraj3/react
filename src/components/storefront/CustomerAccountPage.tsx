@@ -19,11 +19,25 @@ interface CustomerAccountPageProps {
 }
 
 export const CustomerAccountPage: React.FC<CustomerAccountPageProps> = ({ initialTab = 'orders' }) => {
-  const { orders, wishlist, products, settings, navigate, showToast } = useStore();
+  const {
+    orders,
+    myOrders,
+    isAuthenticated,
+    apiEnabled,
+    openAuthModal,
+    wishlist,
+    products,
+    settings,
+    navigate,
+    showToast,
+  } = useStore();
   const [activeTab, setActiveTab] = useState<'orders' | 'downloads' | 'wishlist' | 'refund'>(initialTab);
 
+  // In API mode show the authenticated customer's real orders; otherwise the demo data.
+  const displayOrders = isAuthenticated ? myOrders : orders;
+
   // Filter digital items from orders
-  const digitalOrders = orders.filter((o) => o.items.some((i) => i.is_digital));
+  const digitalOrders = displayOrders.filter((o) => o.items.some((i) => i.is_digital));
 
   const wishlistedProducts = products.filter((p) => wishlist.includes(p.id));
 
@@ -68,7 +82,7 @@ export const CustomerAccountPage: React.FC<CustomerAccountPageProps> = ({ initia
             }`}
           >
             <Package className="w-3.5 h-3.5" />
-            <span>অর্ডার হিস্ট্রি ({orders.length})</span>
+            <span>অর্ডার হিস্ট্রি ({displayOrders.length})</span>
           </button>
 
           <button
@@ -112,10 +126,23 @@ export const CustomerAccountPage: React.FC<CustomerAccountPageProps> = ({ initia
       {/* Orders Tab */}
       {activeTab === 'orders' && (
         <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-xs space-y-4">
+          {apiEnabled && !isAuthenticated && (
+            <div className="p-4 bg-red-50 border border-red-200 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="text-xs text-red-800 font-semibold">
+                আপনার অর্ডার দেখতে প্রথমে লগইন করুন।
+              </div>
+              <button
+                onClick={() => openAuthModal('login')}
+                className="bg-red-600 hover:bg-red-700 text-white text-xs font-bold px-4 py-2 rounded-xl cursor-pointer shrink-0"
+              >
+                লগইন / রেজিস্টার
+              </button>
+            </div>
+          )}
           <h2 className="text-base font-extrabold text-gray-900">সাম্প্রতিক অর্ডারসমূহ</h2>
-          {orders.length > 0 ? (
+          {displayOrders.length > 0 ? (
             <div className="divide-y divide-gray-100">
-              {orders.map((order) => (
+              {displayOrders.map((order) => (
                 <div key={order.id} className="py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">

@@ -32,7 +32,11 @@ export const Header: React.FC<HeaderProps> = ({ onOpenMobileNav }) => {
     setSearchQuery,
     navigate,
     setIsCartDrawerOpen,
-    setSelectedCategory
+    setSelectedCategory,
+    authUser,
+    isAuthenticated,
+    openAuthModal,
+    logout,
   } = useStore();
 
   const [isSearchFocused, setIsSearchFocused] = useState(false);
@@ -269,38 +273,80 @@ export const Header: React.FC<HeaderProps> = ({ onOpenMobileNav }) => {
               </button>
 
               {showAccountMenu && (
-                <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-xl border border-gray-100 py-1.5 z-50 animate-in fade-in duration-150">
+                <div className="absolute right-0 mt-2 w-52 bg-white rounded-xl shadow-xl border border-gray-100 py-1.5 z-50 animate-in fade-in duration-150">
                   <div className="px-3.5 py-2 border-b border-gray-100 text-xs font-semibold text-gray-500">
-                    কাস্টমার অ্যাকাউন্ট
+                    {isAuthenticated ? `স্বাগতম, ${authUser?.name?.split(' ')[0]}` : 'কাস্টমার অ্যাকাউন্ট'}
                   </div>
-                  <button
-                    onClick={() => {
-                      setShowAccountMenu(false);
-                      navigate('customer_account', { tab: 'orders' });
-                    }}
-                    className="w-full text-left px-3.5 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center justify-between"
-                  >
-                    <span>আমার অর্ডারসমূহ</span>
-                  </button>
+
+                  {!isAuthenticated ? (
+                    <>
+                      <button
+                        onClick={() => {
+                          setShowAccountMenu(false);
+                          openAuthModal('login');
+                        }}
+                        className="w-full text-left px-3.5 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                      >
+                        লগইন / রেজিস্টার
+                      </button>
+                      <button
+                        onClick={() => {
+                          setShowAccountMenu(false);
+                          openAuthModal('register');
+                        }}
+                        className="w-full text-left px-3.5 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                      >
+                        নতুন অ্যাকাউন্ট খুলুন
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      onClick={() => {
+                        setShowAccountMenu(false);
+                        navigate('customer_account', { tab: 'orders' });
+                      }}
+                      className="w-full text-left px-3.5 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                    >
+                      আমার অর্ডারসমূহ
+                    </button>
+                  )}
+
                   <button
                     onClick={() => {
                       setShowAccountMenu(false);
                       navigate('order_track');
                     }}
-                    className="w-full text-left px-3.5 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center justify-between"
+                    className="w-full text-left px-3.5 py-2 text-sm text-gray-700 hover:bg-gray-50"
                   >
-                    <span>অর্ডার ট্র্যাক করুন</span>
+                    অর্ডার ট্র্যাক করুন
                   </button>
-                  <button
-                    onClick={() => {
-                      setShowAccountMenu(false);
-                      navigate('customer_account', { tab: 'downloads' });
-                    }}
-                    className="w-full text-left px-3.5 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center justify-between"
-                  >
-                    <span>ডিজিটাল ডাউনলোড</span>
-                  </button>
+
+                  {isAuthenticated && (
+                    <button
+                      onClick={() => {
+                        setShowAccountMenu(false);
+                        navigate('customer_account', { tab: 'downloads' });
+                      }}
+                      className="w-full text-left px-3.5 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                    >
+                      ডিজিটাল ডাউনলোড
+                    </button>
+                  )}
+
                   <div className="border-t border-gray-100 my-1"></div>
+
+                  {isAuthenticated && (
+                    <button
+                      onClick={() => {
+                        setShowAccountMenu(false);
+                        logout();
+                      }}
+                      className="w-full text-left px-3.5 py-2 text-sm text-red-600 hover:bg-red-50"
+                    >
+                      লগআউট
+                    </button>
+                  )}
+
                   <button
                     onClick={() => {
                       setShowAccountMenu(false);

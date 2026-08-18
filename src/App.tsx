@@ -19,6 +19,7 @@ import { ContactPage, ComplaintPage } from './components/storefront/ContactPage'
 import { PolicyPage } from './components/storefront/PolicyPage';
 import { FloatingContactWidget } from './components/storefront/FloatingContactWidget';
 import { Footer } from './components/storefront/Footer';
+import { AuthModal } from './components/storefront/AuthModal';
 
 // Admin Components
 import { AdminLayout } from './components/admin/AdminLayout';
@@ -292,6 +293,7 @@ const AppContent: React.FC = () => {
       {/* Global Quick Order Modal & Cart Drawer & Floating Contact */}
       <QuickOrderModal />
       <CartDrawer />
+      <AuthModal />
       <FloatingContactWidget />
 
       {/* Store Footer */}
