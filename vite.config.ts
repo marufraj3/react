@@ -17,6 +17,8 @@ export default defineConfig(() => {
       hmr: process.env.DISABLE_HMR !== 'true',
       // Disable file watching when DISABLE_HMR is true to save CPU during agent edits.
       watch: process.env.DISABLE_HMR === 'true' ? null : {},
+      // Allow the preview proxy host (e.g. *.e2b.app) to load the dev server.
+      allowedHosts: true,
       // Proxy API + uploaded media to the Laravel backend during local dev.
       proxy: process.env.VITE_BACKEND_PROXY
         ? {
