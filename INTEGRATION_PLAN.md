@@ -178,8 +178,19 @@ VITE_API_URL=http://localhost:8000 VITE_BACKEND_PROXY=http://localhost:8000 npm 
 
 ## Suggested next phases
 
-1. **Deployment prep**: production checklist — build the React app, configure
-   `STORE_URL` + `VITE_API_URL`, `php artisan storage:link`, queue worker for
-   SMS/Facebook CAPI jobs, cron schedule (courier status, stock alerts).
-2. **Migrate admin to React** screen-by-screen if you ever want a unified
+1. **Migrate admin to React** screen-by-screen if you ever want a unified
    React admin (Blade admin already covers everything today).
+2. **Live deploy** — follow `backend/DEPLOYMENT.md` to go to production.
+
+## Deployment
+
+See **`backend/DEPLOYMENT.md`** for the full guide (shared cPanel + VPS):
+
+- Shared-hosting layout is already in place: `index.php` + root `.htaccess`
+  (document root = app root), with sensitive-file protection added.
+- `backend/.env.production.example` — production env template
+  (`STORE_URL`, payment gateways, `QUEUE_CONNECTION=database`).
+- `backend/deploy.sh` — VPS deploy helper (composer install, migrate,
+  storage link, optimize, optional React build copy).
+- Added `jobs` table migration (for the database queue) and a
+  `storage/app/private/.gitkeep` so the digital-download disk exists on clone.

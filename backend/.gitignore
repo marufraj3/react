@@ -28,3 +28,7 @@ preview/www/
 /storage/framework/cache/*
 /storage/framework/views/*
 /storage/logs/*
+
+# Keep the production env TEMPLATE and private-disk marker (tracked)
+!.env.production.example
+!storage/app/private/.gitkeep

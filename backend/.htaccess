@@ -1,12 +1,27 @@
+# ---------------------------------------------------------------------------
+# Shop Genie — shared-hosting root .htaccess
+# Document root points at the app root (not /public), so we must protect
+# sensitive files in addition to the standard Laravel rewrite rules.
+# ---------------------------------------------------------------------------
+
 <IfModule mod_rewrite.c>
     Options -MultiViews -Indexes
 
     RewriteEngine On
     RewriteBase /
 
+    # Pass Authorization header through for Sanctum bearer tokens.
     RewriteCond %{HTTP:Authorization} .
     RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
 
+    # ---- Block direct web access to sensitive files & directories ----------
+    RewriteRule ^\.env($|/) - [F,L]
+    RewriteRule ^composer\.(json|lock)$ - [F,L]
+    RewriteRule ^.*\.(sql|log|md|lock|sh|example)$ - [F,L]
+
+    RewriteRule ^(app|bootstrap|config|database|resources|routes|storage|vendor|tests|lang)/ - [F,L]
+
+    # ---- Laravel front controller ------------------------------------------
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteCond %{REQUEST_FILENAME} !-d
     RewriteRule ^ index.php [L]
