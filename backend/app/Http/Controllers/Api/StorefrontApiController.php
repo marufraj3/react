@@ -16,6 +16,7 @@ use App\Models\Order;
 use App\Models\OrderDetails;
 use App\Models\Payment;
 use App\Models\Product;
+use App\Models\Refund;
 use App\Models\Review;
 use App\Models\Shipping;
 use App\Models\ShippingCharge;
@@ -903,6 +904,105 @@ class StorefrontApiController extends Controller
         $customer->save();
 
         return $this->json(null, 200, 'পাসওয়ার্ড পরিবর্তন হয়েছে।');
+    }
+
+    /* ------------------------------------------------------------------ *
+     * Refunds
+     * ------------------------------------------------------------------ */
+
+    /** GET /api/v1/storefront/auth/refunds */
+    public function myRefunds(Request $request)
+    {
+        $customer = $this->customerFromToken($request);
+
+        if (! $customer) {
+            return $this->json(null, 401, 'Unauthenticated.');
+        }
+
+        $refunds = Refund::where('customer_id', $customer->id)
+            ->orderBy('id', 'desc')
+            ->get()
+            ->map(fn ($r) => [
+                'id'            => (int) $r->id,
+                'refund_id'     => $r->refund_id,
+                'order_id'      => (int) $r->order_id,
+                'order_invoice' => $r->order ? 'ORD-'.$r->order->invoice_id : null,
+                'amount'        => (float) ($r->amount ?? 0),
+                'shipping_charge'=> (float) ($r->shipping_charge ?? 0),
+                'reason'        => $r->reason,
+                'status'        => $r->status,
+                'refund_method' => $r->refund_method,
+                'created_at'    => $r->created_at ? (string) $r->created_at : null,
+            ])
+            ->values();
+
+        return $this->json($refunds);
+    }
+
+    /** POST /api/v1/storefront/refunds */
+    public function createRefund(Request $request)
+    {
+        $customer = $this->customerFromToken($request);
+
+        if (! $customer) {
+            return $this->json(null, 401, 'Unauthenticated.');
+        }
+
+        $request->validate([
+            'order_id'   => 'required|integer|exists:orders,id',
+            'reason'     => 'required|string|max:1000',
+            'refund_method' => 'required|in:original_payment,bkash,nagad,bank,manual',
+            'refund_account' => 'required|string|max:255',
+            'amount'     => 'nullable|numeric|min:0',
+            'shipping_charge' => 'nullable|numeric|min:0',
+        ]);
+
+        $order = Order::where('id', (int) $request->input('order_id'))
+            ->where('customer_id', $customer->id)
+            ->first();
+
+        if (! $order) {
+            return $this->json(null, 404, 'অর্ডারটি খুঁজে পাওয়া যায়নি।');
+        }
+
+        if ((int) $order->order_status === 11) {
+            return $this->json(null, 422, 'এই অর্ডারটি ইতিমধ্যে বাতিল করা হয়েছে।');
+        }
+
+        $existing = Refund::where('order_id', $order->id)
+            ->whereIn('status', ['pending', 'approved'])
+            ->exists();
+
+        if ($existing) {
+            return $this->json(null, 422, 'এই অর্ডারের জন্য ইতিমধ্যে একটি রিফান্ড আবেদন আছে।');
+        }
+
+        $amount = (float) ($request->input('amount') ?? $order->amount);
+        $shippingCharge = (float) ($request->input('shipping_charge') ?? 0);
+
+        $maxRefund = (float) $order->amount + (float) ($order->shipping_charge ?? 0);
+        if (($amount + $shippingCharge) > $maxRefund) {
+            return $this->json(null, 422, 'রিফান্ডের পরিমাণ অর্ডারের মোট টাকার বেশি হতে পারবে না।');
+        }
+
+        $refund = new Refund();
+        $refund->order_id = $order->id;
+        $refund->customer_id = $customer->id;
+        $refund->refund_id = Refund::generateRefundId();
+        $refund->amount = $amount;
+        $refund->shipping_charge = $shippingCharge;
+        $refund->reason = $request->input('reason');
+        $refund->status = 'pending';
+        $refund->refund_method = $request->input('refund_method');
+        $refund->refund_account = $request->input('refund_account');
+        $refund->refund_account_name = $request->input('refund_account_name');
+        $refund->save();
+
+        return $this->json([
+            'id'         => (int) $refund->id,
+            'refund_id'  => $refund->refund_id,
+            'status'     => $refund->status,
+        ], 201, 'রিফান্ড আবেদন জমা হয়েছে।');
     }
 
     /** POST /api/v1/storefront/reviews */

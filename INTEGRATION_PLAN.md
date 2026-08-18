@@ -68,6 +68,8 @@ Browser
 | POST | `/api/v1/storefront/auth/profile` | update name/phone/email/address |
 | POST | `/api/v1/storefront/auth/password` | change password (old + new) |
 | GET | `/api/v1/storefront/auth/downloads` | authenticated customer's digital downloads |
+| GET | `/api/v1/storefront/auth/refunds` | authenticated customer's refund requests |
+| POST | `/api/v1/storefront/refunds` | create refund request (mirrors Blade RefundController::store) |
 | POST | `/api/v1/storefront/reviews` | submit review |
 | POST | `/api/v1/storefront/complaints` | submit complaint |
 | POST | `/api/v1/storefront/contact` | contact message |
@@ -86,9 +88,11 @@ shape, so the React client stays thin.
   (`authUser`, `authToken`, `myOrders`, `login`, `registerUser`, `logout`).
 - `src/components/storefront/AuthModal.tsx` — login/register modal.
 - `src/components/storefront/Header.tsx` — account menu now reflects the
-  logged-in state (login/register vs. orders/downloads/logout).
+  logged-in state (login/register vs. orders/downloads/logout). In API mode the
+  "অ্যাডমিন প্যানেল" button opens the real Laravel `/admin` in a new tab.
 - `src/components/storefront/CustomerAccountPage.tsx` — shows the real order
-  history in API mode (with a login prompt when signed out).
+  history, downloads, refund requests and profile in API mode (with a login
+  prompt when signed out).
 - `src/components/storefront/OrderTrackingPage.tsx` — uses `trackOrderAsync`.
 - `vite.config.ts` — dev proxy for `/api`, `/uploads`, `/storage` →
   `VITE_BACKEND_PROXY` (default `http://localhost:8000`).

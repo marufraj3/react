@@ -16,6 +16,7 @@ import type {
   GeneralSettings,
   Order,
   Product,
+  RefundItem,
   ShippingCharge,
   Subcategory,
 } from '../types';
@@ -211,6 +212,39 @@ export async function myDownloadsApi(token: string): Promise<DigitalDownloadItem
       Accept: 'application/json',
       Authorization: `Bearer ${token}`,
     },
+  });
+}
+
+export async function myRefundsApi(token: string): Promise<RefundItem[]> {
+  return request<RefundItem[]>('/auth/refunds', {
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+  });
+}
+
+export async function submitRefundApi(
+  token: string,
+  payload: {
+    order_id: number;
+    reason: string;
+    refund_method: string;
+    refund_account: string;
+    refund_account_name?: string;
+    amount?: number;
+    shipping_charge?: number;
+  },
+): Promise<{ id: number; refund_id: string; status: string }> {
+  return request('/refunds', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(payload),
   });
 }
 

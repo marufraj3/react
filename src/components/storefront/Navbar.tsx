@@ -26,7 +26,8 @@ export const Navbar: React.FC<NavbarProps> = ({ isMobileNavOpen, onCloseMobileNa
     selectedCategory,
     setSelectedCategory,
     navigate,
-    settings
+    settings,
+    adminUrl
   } = useStore();
 
   const [hoveredCatId, setHoveredCatId] = useState<number | null>(null);
@@ -241,7 +242,11 @@ export const Navbar: React.FC<NavbarProps> = ({ isMobileNavOpen, onCloseMobileNa
                 </button>
                 <button
                   onClick={() => {
-                    navigate('admin');
+                    if (adminUrl) {
+                      window.open(adminUrl, '_blank', 'noopener');
+                    } else {
+                      navigate('admin');
+                    }
                     onCloseMobileNav();
                   }}
                   className="w-full text-left px-3 py-2 text-sm font-bold text-red-600 hover:bg-red-50 rounded-lg flex items-center gap-2"

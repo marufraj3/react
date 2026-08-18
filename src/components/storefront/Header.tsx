@@ -37,6 +37,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenMobileNav }) => {
     isAuthenticated,
     openAuthModal,
     logout,
+    adminUrl,
   } = useStore();
 
   const [isSearchFocused, setIsSearchFocused] = useState(false);
@@ -234,7 +235,13 @@ export const Header: React.FC<HeaderProps> = ({ onOpenMobileNav }) => {
 
             {/* Admin Switcher / Quick Access */}
             <button
-              onClick={() => navigate('admin')}
+              onClick={() => {
+                if (adminUrl) {
+                  window.open(adminUrl, '_blank', 'noopener');
+                } else {
+                  navigate('admin');
+                }
+              }}
               className="flex items-center gap-1.5 text-xs font-bold bg-gray-900 hover:bg-black text-white px-3 py-2 rounded-xl transition-transform active:scale-95 shadow-sm"
               title="Switch to Admin Dashboard"
             >

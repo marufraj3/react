@@ -37,6 +37,8 @@ export const CustomerAccountPage: React.FC<CustomerAccountPageProps> = ({ initia
     updateProfile,
     changePassword,
     downloads,
+    refunds,
+    submitRefund,
   } = useStore();
   const [activeTab, setActiveTab] = useState<'orders' | 'downloads' | 'wishlist' | 'refund' | 'profile'>(initialTab);
 
@@ -52,12 +54,45 @@ export const CustomerAccountPage: React.FC<CustomerAccountPageProps> = ({ initia
   const [refundOrderId, setRefundOrderId] = useState('');
   const [refundReason, setRefundReason] = useState('');
   const [refundSubmitted, setRefundSubmitted] = useState(false);
+  const [refundMethod, setRefundMethod] = useState('original_payment');
+  const [refundAccount, setRefundAccount] = useState('');
+  const [refundError, setRefundError] = useState<string | null>(null);
+  const [refundSubmitting, setRefundSubmitting] = useState(false);
+  const [lastRefundId, setLastRefundId] = useState<string | null>(null);
 
-  const handleRefundSubmit = (e: React.FormEvent) => {
+  const handleRefundSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setRefundError(null);
+
+    // API mode: submit a real refund request to the Laravel backend.
+    if (isAuthenticated) {
+      const orderIdNum = Number(refundOrderId.trim());
+      if (!refundOrderId.trim() || !refundReason.trim() || !refundAccount.trim()) {
+        setRefundError('অর্ডার আইডি, সমস্যার বিবরণ ও রিফান্ড অ্যাকাউন্ট দিন।');
+        return;
+      }
+      setRefundSubmitting(true);
+      const res = await submitRefund({
+        order_id: orderIdNum,
+        reason: refundReason.trim(),
+        refund_method: refundMethod,
+        refund_account: refundAccount.trim(),
+      });
+      setRefundSubmitting(false);
+      if (res.success) {
+        setLastRefundId(res.refundId ?? null);
+        setRefundSubmitted(true);
+        showToast(`রিফান্ড আবেদন জমা হয়েছে! ${res.refundId ? 'টোকেন: ' + res.refundId : ''}`, 'success');
+      } else {
+        setRefundError(res.message);
+      }
+      return;
+    }
+
+    // Demo mode fallback.
     if (!refundOrderId.trim() || !refundReason.trim()) return;
     setRefundSubmitted(true);
-    showToast('রিটার্ন/রিফান্ড আবেদন সফলভাবে জমা হয়েছে। কাস্টমার সাপোর্ট আপনাকে কল করবে।', 'success');
+    showToast('রিটার্ন/রিফান্ড আবেদন সফলভাবে জমা হয়েছে। কাস্টমার সাপোর্ট আপনাকে কল করবে।', 'success');
   };
 
   const handleDownload = (filename?: string) => {
@@ -510,56 +545,167 @@ export const CustomerAccountPage: React.FC<CustomerAccountPageProps> = ({ initia
 
       {/* Refund Request Tab */}
       {activeTab === 'refund' && (
-        <div className="bg-white rounded-3xl p-6 sm:p-8 border border-gray-100 shadow-xs max-w-xl mx-auto space-y-5">
-          <div className="text-center space-y-1">
-            <h2 className="text-lg font-extrabold text-gray-950">রিটার্ন ও রিফান্ড আবেদন</h2>
-            <p className="text-xs text-gray-500">
-              পণ্যে কোনো ত্রুটি বা সমস্যা থাকলে ডেলিভারির ৩ দিনের মধ্যে আবেদন করুন
-            </p>
+        <div className="space-y-6 max-w-xl mx-auto">
+          {apiEnabled && !isAuthenticated && (
+            <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="text-xs text-gray-700 font-semibold">
+                রিফান্ড আবেদন করতে লগইন করুন।
+              </div>
+              <button
+                onClick={() => openAuthModal('login')}
+                className="bg-red-600 hover:bg-red-700 text-white text-xs font-bold px-4 py-2 rounded-xl cursor-pointer shrink-0"
+              >
+                লগইন / রেজিস্টার
+              </button>
+            </div>
+          )}
+
+          <div className="bg-white rounded-3xl p-6 sm:p-8 border border-gray-100 shadow-xs space-y-5">
+            <div className="text-center space-y-1">
+              <h2 className="text-lg font-extrabold text-gray-950">রিটার্ন ও রিফান্ড আবেদন</h2>
+              <p className="text-xs text-gray-500">
+                পণ্যে কোনো ত্রুটি বা সমস্যা থাকলে ডেলিভারির ৩ দিনের মধ্যে আবেদন করুন
+              </p>
+            </div>
+
+            {!refundSubmitted ? (
+              <form onSubmit={handleRefundSubmit} className="space-y-4">
+                {isAuthenticated ? (
+                  <>
+                    <div>
+                      <label className="block text-xs font-bold text-gray-700 mb-1">অর্ডার আইডি *</label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="যেমন: 9841 (ইনভয়েস নম্বর)"
+                        value={refundOrderId}
+                        onChange={(e) => setRefundOrderId(e.target.value)}
+                        className="w-full bg-gray-50 text-xs rounded-xl px-3.5 py-2.5 border border-gray-200 font-mono outline-hidden focus:border-red-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-gray-700 mb-1">সমস্যার বিবরণ *</label>
+                      <textarea
+                        rows={3}
+                        required
+                        placeholder="পণ্যের কি সমস্যা বা কেন ফেরত দিতে চাচ্ছেন বিস্তারিত লিখুন..."
+                        value={refundReason}
+                        onChange={(e) => setRefundReason(e.target.value)}
+                        className="w-full bg-gray-50 text-xs rounded-xl px-3.5 py-2.5 border border-gray-200 outline-hidden focus:border-red-500 resize-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-gray-700 mb-1">রিফান্ড পদ্ধতি *</label>
+                      <select
+                        value={refundMethod}
+                        onChange={(e) => setRefundMethod(e.target.value)}
+                        className="w-full bg-gray-50 text-xs rounded-xl px-3.5 py-2.5 border border-gray-200 outline-hidden focus:border-red-500"
+                      >
+                        <option value="original_payment">মূল পেমেন্ট পদ্ধতি</option>
+                        <option value="bkash">bKash</option>
+                        <option value="nagad">Nagad</option>
+                        <option value="bank">ব্যাংক</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-gray-700 mb-1">রিফান্ড অ্যাকাউন্ট নম্বর *</label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="যেমন: 017xxxxxxxx (bKash/Nagad) বা ব্যাংক একাউন্ট নম্বর"
+                        value={refundAccount}
+                        onChange={(e) => setRefundAccount(e.target.value)}
+                        className="w-full bg-gray-50 text-xs rounded-xl px-3.5 py-2.5 border border-gray-200 font-mono outline-hidden focus:border-red-500"
+                      />
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div>
+                      <label className="block text-xs font-bold text-gray-700 mb-1">অর্ডার আইডি *</label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="যেমন: ORD-9841"
+                        value={refundOrderId}
+                        onChange={(e) => setRefundOrderId(e.target.value)}
+                        className="w-full bg-gray-50 text-xs rounded-xl px-3.5 py-2.5 border border-gray-200 uppercase font-mono outline-hidden focus:border-red-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-gray-700 mb-1">সমস্যার বিবরণ *</label>
+                      <textarea
+                        rows={3}
+                        required
+                        placeholder="পণ্যের কি সমস্যা বা কেন ফেরত দিতে চাচ্ছেন বিস্তারিত লিখুন..."
+                        value={refundReason}
+                        onChange={(e) => setRefundReason(e.target.value)}
+                        className="w-full bg-gray-50 text-xs rounded-xl px-3.5 py-2.5 border border-gray-200 outline-hidden focus:border-red-500 resize-none"
+                      />
+                    </div>
+                  </>
+                )}
+
+                {refundError && (
+                  <div className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-xl text-xs font-semibold">
+                    {refundError}
+                  </div>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={refundSubmitting}
+                  className="w-full bg-gray-900 hover:bg-black disabled:opacity-60 text-white text-xs font-bold py-3 rounded-xl shadow-sm flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  {refundSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
+                  আবেদন জমা দিন
+                </button>
+              </form>
+            ) : (
+              <div className="p-5 bg-emerald-50 rounded-2xl border border-emerald-200 text-center space-y-2">
+                <CheckCircle2 className="w-8 h-8 text-emerald-600 mx-auto" />
+                <p className="text-xs font-bold text-emerald-950">
+                  আপনার আবেদনটি গ্রহণ করা হয়েছে।
+                </p>
+                {lastRefundId && (
+                  <p className="text-[11px] font-mono font-bold text-emerald-800">
+                    টোকেন: {lastRefundId}
+                  </p>
+                )}
+                <p className="text-[11px] text-emerald-800">
+                  আমাদের রিটার্ন এক্সিকিউটিভ ২৪ ঘন্টার মধ্যে আপনার সাথে ফোনে যোগাযোগ করবে।
+                </p>
+              </div>
+            )}
           </div>
 
-          {!refundSubmitted ? (
-            <form onSubmit={handleRefundSubmit} className="space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1">অর্ডার আইডি *</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="যেমন: ORD-9841"
-                  value={refundOrderId}
-                  onChange={(e) => setRefundOrderId(e.target.value)}
-                  className="w-full bg-gray-50 text-xs rounded-xl px-3.5 py-2.5 border border-gray-200 uppercase font-mono outline-hidden focus:border-red-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1">সমস্যার বিবরণ *</label>
-                <textarea
-                  rows={3}
-                  required
-                  placeholder="পণ্যের কি সমস্যা বা কেন ফেরত দিতে চাচ্ছেন বিস্তারিত লিখুন..."
-                  value={refundReason}
-                  onChange={(e) => setRefundReason(e.target.value)}
-                  className="w-full bg-gray-50 text-xs rounded-xl px-3.5 py-2.5 border border-gray-200 outline-hidden focus:border-red-500 resize-none"
-                />
-              </div>
-
-              <button
-                type="submit"
-                className="w-full bg-gray-900 hover:bg-black text-white text-xs font-bold py-3 rounded-xl shadow-sm"
-              >
-                আবেদন জমা দিন
-              </button>
-            </form>
-          ) : (
-            <div className="p-5 bg-emerald-50 rounded-2xl border border-emerald-200 text-center space-y-2">
-              <CheckCircle2 className="w-8 h-8 text-emerald-600 mx-auto" />
-              <p className="text-xs font-bold text-emerald-950">
-                আপনার আবেদনটি গ্রহণ করা হয়েছে।
-              </p>
-              <p className="text-[11px] text-emerald-800">
-                আমাদের রিটার্ন এক্সিকিউটিভ ২৪ ঘন্টার মধ্যে আপনার সাথে ফোনে যোগাযোগ করবে।
-              </p>
+          {/* My refund requests (API mode) */}
+          {isAuthenticated && refunds.length > 0 && (
+            <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-xs space-y-3">
+              <h3 className="text-sm font-extrabold text-gray-900">আমার রিফান্ড আবেদনসমূহ</h3>
+              {refunds.map((r) => (
+                <div key={r.id} className="p-4 rounded-2xl bg-gray-50 border border-gray-100 space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="font-mono text-xs font-bold text-gray-900">{r.refund_id}</span>
+                    <span
+                      className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
+                        r.status === 'approved' || r.status === 'processed'
+                          ? 'bg-emerald-100 text-emerald-800'
+                          : r.status === 'rejected'
+                          ? 'bg-red-100 text-red-800'
+                          : 'bg-amber-100 text-amber-800'
+                      }`}
+                    >
+                      {r.status}
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-600">
+                    অর্ডার: {r.order_invoice || r.order_id} | পরিমাণ: {settings.currency}
+                    {(r.amount + r.shipping_charge).toLocaleString()}
+                  </p>
+                  <p className="text-[11px] text-gray-500">{r.reason}</p>
+                </div>
+              ))}
             </div>
           )}
         </div>

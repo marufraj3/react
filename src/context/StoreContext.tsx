@@ -20,6 +20,7 @@ import {
   ContactMessage,
   AuthUser,
   DigitalDownloadItem,
+  RefundItem,
 } from '../types';
 import {
   initialSettings,
@@ -39,6 +40,7 @@ import {
 } from '../data/initialData';
 import {
   API_ENABLED,
+  API_BASE,
   fetchBootstrap,
   placeOrder,
   trackOrderApi,
@@ -53,6 +55,8 @@ import {
   updateProfileApi,
   changePasswordApi,
   myDownloadsApi,
+  myRefundsApi,
+  submitRefundApi,
 } from '../api/client';
 
 export type ViewType =
@@ -79,6 +83,8 @@ export interface ToastNotification {
 interface StoreContextType {
   // API mode flag (true when VITE_API_URL is configured)
   apiEnabled: boolean;
+  /** Real Laravel admin URL when API mode is on; null in demo mode. */
+  adminUrl: string | null;
 
   // Store Data
   products: Product[];
@@ -140,6 +146,7 @@ interface StoreContextType {
   authModalOpen: boolean;
   authModalMode: 'login' | 'register';
   downloads: DigitalDownloadItem[];
+  refunds: RefundItem[];
   openAuthModal: (mode?: 'login' | 'register') => void;
   closeAuthModal: () => void;
   login: (login: string, password: string) => Promise<{ success: boolean; message: string }>;
@@ -147,6 +154,8 @@ interface StoreContextType {
   logout: () => Promise<void>;
   refreshMyOrders: () => Promise<void>;
   refreshDownloads: () => Promise<void>;
+  refreshRefunds: () => Promise<void>;
+  submitRefund: (data: { order_id: number; reason: string; refund_method: string; refund_account: string; refund_account_name?: string; amount?: number; shipping_charge?: number }) => Promise<{ success: boolean; message: string; refundId?: string }>;
   updateProfile: (data: { name: string; phone: string; email?: string; address?: string; district?: string; area?: string }) => Promise<{ success: boolean; message: string }>;
   changePassword: (data: { old_password: string; new_password: string; confirm_password: string }) => Promise<{ success: boolean; message: string }>;
 
@@ -308,6 +317,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [authToken, setAuthToken] = useState<string | null>(() => getStoredItem('auth_token', null));
   const [myOrders, setMyOrders] = useState<Order[]>([]);
   const [downloads, setDownloads] = useState<DigitalDownloadItem[]>([]);
+  const [refunds, setRefunds] = useState<RefundItem[]>([]);
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [authModalMode, setAuthModalMode] = useState<'login' | 'register'>('login');
 
@@ -681,6 +691,38 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   };
 
+  const refreshRefunds = async (token?: string) => {
+    const t = token ?? authToken;
+    if (!t) return;
+    try {
+      const items = await myRefundsApi(t);
+      setRefunds(items);
+    } catch {
+      // Ignore — session may have expired.
+    }
+  };
+
+  const submitRefund = async (data: {
+    order_id: number;
+    reason: string;
+    refund_method: string;
+    refund_account: string;
+    refund_account_name?: string;
+    amount?: number;
+    shipping_charge?: number;
+  }) => {
+    if (!authToken) {
+      return { success: false, message: 'আগে লগইন করুন।' };
+    }
+    try {
+      const res = await submitRefundApi(authToken, data);
+      await refreshRefunds();
+      return { success: true, message: 'রিফান্ড আবেদন জমা হয়েছে।', refundId: res.refund_id };
+    } catch (err) {
+      return { success: false, message: err instanceof Error ? err.message : 'রিফান্ড আবেদন ব্যর্থ হয়েছে।' };
+    }
+  };
+
   const login = async (login: string, password: string) => {
     if (!API_ENABLED) {
       return { success: false, message: 'API মোড চালু নেই।' };
@@ -690,6 +732,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       applyAuthSession(res.token, res.user);
       await refreshMyOrders(res.token);
       await refreshDownloads(res.token);
+      await refreshRefunds(res.token);
       setAuthModalOpen(false);
       showToast(`স্বাগতম, ${res.user.name}!`, 'success');
       return { success: true, message: 'লগইন সফল হয়েছে!' };
@@ -721,6 +764,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setAuthUser(null);
     setMyOrders([]);
     setDownloads([]);
+    setRefunds([]);
     try {
       localStorage.removeItem(LOCAL_STORAGE_KEY_PREFIX + 'auth_token');
       localStorage.removeItem(LOCAL_STORAGE_KEY_PREFIX + 'auth_user');
@@ -779,6 +823,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           if (!cancelled) setMyOrders(orders);
           const downloads = await myDownloadsApi(authToken);
           if (!cancelled) setDownloads(downloads);
+          const refunds = await myRefundsApi(authToken);
+          if (!cancelled) setRefunds(refunds);
         }
       } catch {
         // Invalid/expired token — clear it.
@@ -1002,6 +1048,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     <StoreContext.Provider
       value={{
         apiEnabled: API_ENABLED,
+        adminUrl: API_ENABLED ? `${API_BASE.replace(/\/+$/, '')}/admin` : null,
         products,
         categories,
         subcategories,
@@ -1051,6 +1098,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         authModalOpen,
         authModalMode,
         downloads,
+        refunds,
         openAuthModal,
         closeAuthModal,
         login,
@@ -1058,6 +1106,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         logout,
         refreshMyOrders,
         refreshDownloads,
+        refreshRefunds,
+        submitRefund,
         updateProfile,
         changePassword,
         lastCreatedOrder,

@@ -258,3 +258,16 @@ export interface DigitalDownloadItem {
   remaining_downloads: number;
   expires_at?: string | null;
 }
+
+export interface RefundItem {
+  id: number;
+  refund_id: string;
+  order_id: number;
+  order_invoice?: string | null;
+  amount: number;
+  shipping_charge: number;
+  reason: string;
+  status: 'pending' | 'approved' | 'processed' | 'rejected';
+  refund_method: string;
+  created_at?: string | null;
+}

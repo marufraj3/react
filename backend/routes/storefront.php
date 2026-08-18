@@ -44,8 +44,11 @@ Route::prefix('v1/storefront')->group(function () {
     Route::get('auth/me', [StorefrontApiController::class, 'me']);
     Route::get('auth/orders', [StorefrontApiController::class, 'myOrders']);
     Route::get('auth/downloads', [StorefrontApiController::class, 'myDownloads']);
+    Route::get('auth/refunds', [StorefrontApiController::class, 'myRefunds']);
     Route::post('auth/profile', [StorefrontApiController::class, 'updateProfile']);
     Route::post('auth/password', [StorefrontApiController::class, 'changePassword']);
+
+    Route::post('refunds', [StorefrontApiController::class, 'createRefund']);
 
     Route::post('reviews', [StorefrontApiController::class, 'submitReview']);
     Route::post('complaints', [StorefrontApiController::class, 'submitComplaint']);
